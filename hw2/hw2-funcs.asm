@@ -6,12 +6,14 @@
 
 .text
 eval:
-  # $a0 has the input
+  # $a0 has the address of the input
   # arg1_addr holds the input
   # val_stack holds operands and op_stack holds operators
   
   lb $t1, 0($a0) # $t1 gets the character
-
+  la $s5, val_stack
+  la $s6, op_stack
+  
   jr $ra
 
 is_digit:
@@ -73,7 +75,8 @@ stack_pop:
   subu $t1, $a0, $t2 # $t1 = tp - 4
   sub $t0, $t0, $t1 # $t0 = base_addr - (tp - 4) (Top is at the bottom)
   lw $v1, 0($t0) # Return the value that was at the top
-  move $v0, $t1 # Return tp at new top (tp - 4)
+  addiu $t1, $t1, 4 # Get the tp
+  move $v0, $t1 # Return tp
   
   jr $ra
 
@@ -130,9 +133,9 @@ op_precedence:
   
   jr $ra
 
-apply_bop: # TODO
+apply_bop: # TODO: Preconditions
   # Simple operations based on $a0 (op1), $a1 (operation), $a2 (operand2)
-  addiu $sp, $sp, -8 # Save arguments
+  addi $sp, $sp, -8 # Save arguments
   sw $a0, 0($sp) # Save argument is op1
   sw $ra, -4($sp) # Save ra for return function
   move $a0, $a1 # The argument to pass in
@@ -143,11 +146,11 @@ apply_bop: # TODO
   addi $sp, $sp, 4
   
   li $t0, '+' # Addition
-  add $s0, $a0, $a2
+  add $v0, $a0, $a2
   beq $t0, $a1, solution_applyOp
   
   li $t0, '-' # Subtraction
-  sub $s0, $a0, $a2
+  sub $v0, $a0, $a2
   beq $t0, $a1, solution_applyOp
   
   li $t0, '*' # Multiplication
@@ -176,6 +179,12 @@ apply_bop: # TODO
 
   op_error:
     la $a0, ApplyOpError
+    li $v0, 4
+    syscall
+    j end
+    
+  bad_token_err:
+    la $a0, BadToken
     li $v0, 4
     syscall
     j end

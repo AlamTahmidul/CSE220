@@ -5,7 +5,7 @@ BadToken: .asciiz "Unrecognized Token"
 ParseError: .asciiz "Ill Formed Expression"
 ApplyOpError: .asciiz "Operator could not be applied"
 Number1: .word 1
-Number2: .word 2
+Number2: .word 5
 Oper: .asciiz "/"
 
 val_stack : .word 0
