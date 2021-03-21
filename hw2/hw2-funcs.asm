@@ -25,10 +25,12 @@ is_digit:
 
 stack_push:
   # $a0 = content, $a1 = tp (top of stack), $a2 = stack base_addr
-  li $t0, 2000 # No more than 500 elements
-  bgeu $a1, $t0, stack_error # If the stack is full, return error
+  li $t0, 500 # No more than 500 elements
+  bgtu $a1, $t0, stack_error # If the stack is full, return error
   
-  
+  move $t0, $a2 # Clone base address
+  sub $t0, $t0, $a1 # Move to the top of the stack (top should be empty) this should be at the most bottom
+  sw $a0, 0($t0) # Push the content
   
   li $v0, 4 # Increment top by 4 to the next space
   addu $v0, $v0, $a1
@@ -42,20 +44,39 @@ stack_push:
 
 stack_peek:
   # $a0 = tp, $a1 = stack_base_addr
-  
+   addi $sp, $sp, -4
+   sw $ra, 0($sp) # Store return address
+   jal is_stack_empty # Check for empty stack
+   lw $ra, 0($sp) # Restore return address
+   addi $sp, $sp, 4
+   bnez $v0, stack_error # If stack is empty, return error
+   
+   #TODO  
+   
   jr $ra
 
 stack_pop:
   # $a0 = tp, $a1 = addr
-  jal is_stack_empty # Check for empty stack
-  bnez $v0, stack_error # If stack is empty, return error
-        
+   addi $sp, $sp, -4
+   sw $ra, 0($sp) # Store return address
+   jal is_stack_empty # Check for empty stack
+   lw $ra, 0($sp) # Restore return address
+   addi $sp, $sp, 4
+   bnez $v0, stack_error # If stack is empty, return error
+  
+  move $t0, $a1 # $t0 clones base_addr
+  li $t2, 4
+  subu $t1, $a0, $t2 # $t1 = tp - 4
+  sub $t0, $t0, $t1 # $t0 = base_addr - (tp - 4) (Top is at the bottom)
+  lw $v1, 0($t0) # Return the value that was at the top
+  move $v0, $t1 # Return tp at new top (tp - 4)
+  
   jr $ra
 
 is_stack_empty:
   # $a0 is tp
-  li $t0, -4
-  sle $v0, $a0, $t0
+  # if (tp < 0) then return 1
+  sle $v0, $a0, $0
   jr $ra
 
 valid_ops:

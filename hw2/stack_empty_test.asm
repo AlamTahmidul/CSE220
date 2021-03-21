@@ -6,7 +6,7 @@ ParseError: .asciiz "Ill Formed Expression"
 ApplyOpError: .asciiz "Operator could not be applied"
 Comma: .asciiz ","
 
-val_stack : .word 0
+val_stack : .word 23345678
 op_stack : .word 0
 
 .text
@@ -14,9 +14,11 @@ op_stack : .word 0
 main:
 
   # add code to call and test stack_empty function
-  li $t0, 10
+  # $a0 is tp
+  li $t0, 0
   move $a0, $t0
   jal is_stack_empty
+  
   move $a0, $v0
   li $v0, 1
   syscall
