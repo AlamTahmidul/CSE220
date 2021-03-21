@@ -5,7 +5,7 @@ BadToken: .asciiz "Unrecognized Token"
 ParseError: .asciiz "Ill Formed Expression"
 ApplyOpError: .asciiz "Operator could not be applied"
 Eq: .asciiz "(3+2)"
-Num1: .word 3
+Num1: .word 49
 
 val_stack : .word 2334567
 op_stack : .word 0
@@ -26,18 +26,28 @@ main:
   li $v0, 1
   syscall # Top should be at index 4
   
+  # $a0 = tp, $a1 = stack_base_addr (PEEK)
+  move $t7, $a0
+  la $a1, val_stack
+  jal stack_peek
+  
+  move $a0, $v0 # Peeks the top of the stack
+  li $v0, 1
+  syscall # Peek should be at 49
+  
   # $a0 = tp, $a1 = addr (POP)
   # $a0 from the previous should be at 4
+  move $a0, $t7
   la $a1, val_stack
   jal stack_pop 
   
   move $a0, $v0 # Print new top after pop
   li $v0, 1
-  syscall # Should be 0
+  syscall # Should be 500
   
   move $a0, $v1 # Print the value that was popped
   li $v0, 1
-  syscall # Should be 3 that was popped
+  syscall # Should be 49 that was popped
   
 end:
   # Terminates the program

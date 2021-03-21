@@ -51,8 +51,12 @@ stack_peek:
    addi $sp, $sp, 4
    bnez $v0, stack_error # If stack is empty, return error
    
-   #TODO  
-   
+   move $t0, $a1 # $t0 clones base_addr
+   li $t2, 4
+   subu $t1, $a0, $t2 # $t1 = tp - 4
+   sub $t0, $t0, $t1 # $t0 = base_addr - (tp - 4) (Top is at the bottom)
+   lw $v0, 0($t0) # Return the value that was at the top
+
   jr $ra
 
 stack_pop:
