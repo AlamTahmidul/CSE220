@@ -10,18 +10,207 @@ eval:
   # arg1_addr holds the input
   # val_stack holds operands and op_stack holds operators
   
-  lb $t1, 0($a0) # $t1 gets the character
   la $s5, val_stack
   la $s6, op_stack
-  
+  li $s0, 0 # Top of val_stack
+  li $s1, 0 # Top of op_stack
+  li $s2, 0 # Integer to make
+  push_to_stacks:
+    lb $t1, 0($a0) # $t1 gets the character of the input
+    beqz $t1, finish_pushing # Reached the end of the input
+
+    addi $sp, $sp, -24
+    sw $a0, 0($sp) # Save the input
+    sw $ra, -4($sp) # Save the return address to main
+    sw $t1, -8($sp) # Save the current character
+    sw $s0, -12($sp) # Save top of val_stack
+    sw $s1, -16($sp) # Save top of op_stack
+    sw $s2, -20($sp) 
+    move $a0, $t1 # $a0 will be the character
+    jal is_digit # $v0 will tell us if it is a digit (1) or not (0)
+    lw $a0, 0($sp) # Restore the input
+    lw $ra, -4($sp) # Restore the return address to main
+    lw $t1, -8($sp) # Restore character
+    lw $s0, -12($sp) # top of val_stack
+    lw $s1, -16($sp) # top of op_stack
+    lw $s2, -20($sp)
+    bgtz $v0, parse_number # Must be a number (v0 == 1 > 0)
+    beqz $v0, parse_operands # Check if the character is an operator (v0 == 0)
+    lw $a0, 0($sp) # Restore the input
+    lw $ra, -4($sp) # Restore the return address to main
+    lw $t1, -8($sp) # Restore character
+    lw $s0, -12($sp) # top of val_stack
+    lw $s1, -16($sp) # top of op_stack
+    addi $sp, $sp, 24
+    parse_number:
+      li $t2, '0'
+      sub $t1, $t1, $t2 # Subtract  from '0' to get the numerical value, $t1
+      li $t0, 10
+      mul $s2, $s2, $t0 # curr_sum *= 10
+      add $s2, $s2, $t1 # curr_sum += digit ($t1)
+      
+      lb $t0, 1($a0) # Check if the next character is a digit
+      sub $t1, $t0, $t2 # Get the digit and store in $t1
+      li $t0, 9
+      bge $t1, $t0, push_val_stack # if $t1 > 9 (not a digit) then push current integer
+      ble $t1, $0, push_val_stack # not a digit; push current integer
+      j continue_loop # Otherwise, go to the next character
+      push_val_stack: 
+        # $s0 (tp_value), $s5 (base_addr_value)
+          addi $sp, $sp, -20
+          sw $a0, 0($sp) # Save $a0
+          sw $ra, -4($sp) # Save curr $ra
+          sw $t1, -8($sp) # Save current character
+          sw $s1, -12($sp) # Save top of op_stack
+          # (PUSH INTO val STACK) $a0 = content, $a1 = tp (top of stack), $a2 = stack base_addr
+          move $a0, $s2 # value in $a0
+          move $a1, $s0 # Top of val_stack
+          move $a2, $s5 # Base address of value stack
+          jal stack_push # Returns the new top in $v0
+          lw $a0, 0($sp) # Resore $a0
+          lw $ra, -4($sp) # Restore curr $ra
+          lw $t1, -8($sp) # Restore current character
+          lw $s1, -12($sp) # top of op_stack
+          move $s0, $v0 # New top of val_stack
+          addi $sp, $sp, 20 # Close stack
+
+        li $s2, 0 # reset integer maker
+        j continue_loop # Get next character
+    parse_operands:
+      addi $sp, $sp, -20
+      sw $a0, 0($sp) # Save the input
+      sw $ra, -4($sp) # Save the return address to main
+      sw $t1, -8($sp) # Save the current character
+      sw $s0, -12($sp) # Save top of val_stack
+      sw $s1, -16($sp) # Save top of op_stack
+      move $a0, $t1
+      jal valid_ops # $v0 will tell us if the character is an operator (1) or not (0)
+      lw $a0, 0($sp) # Restore the input
+      lw $ra, -4($sp) # Restore the return address to main
+      lw $t1, -8($sp) # Restore character
+      lw $s0, -12($sp) # top of val_stack
+      lw $s1, -16($sp) # top of op_stack
+      addi $sp, $sp, 20 # Close stack
+      bgtz $v0, push_op_stack # Valid Operator
+      
+      addi $sp, $sp, -20
+      sw $a0, 0($sp) # Save the input
+      sw $ra, -4($sp) # Save the return address to main
+      sw $t1, -8($sp) # Save the current character
+      sw $s0, -12($sp) # Save top of val_stack
+      sw $s1, -16($sp) # Save top of op_stack
+      beqz $v0, parenthesis_check # Check if it is a parenthesis
+      lw $a0, 0($sp) # Restore the input
+      lw $ra, -4($sp) # Restore the return address to main
+      lw $t1, -8($sp) # Restore character
+      lw $s0, -12($sp) # top of val_stack
+      lw $s1, -16($sp) # top of op_stack
+      addi $sp, $sp, 20 # Close stack
+      j push_op_stack # Must be a valid operand
+
+      parenthesis_check: # If it is a parenthesis
+      lw $a0, 0($sp) # Restore the input
+      lw $ra, -4($sp) # Restore the return address to main
+      lw $t1, -8($sp) # Restore character
+      lw $s0, -12($sp) # top of val_stack
+      lw $s1, -16($sp) # top of op_stack
+      addi $sp, $sp, 20 # Close stack
+        li $t6, '('
+        li $t7, ')'
+        beq $t1, $t6, push_op_stack # If char is an open parenthesis
+        bne $t1, $t7, ill_formed_err # Char is not a closed parenthesis; invalid character and return error
+        
+        push_op_stack:
+          # If valid op. check precedence
+          addi $sp, $sp, -20
+          sw $a0, 0($sp) # Save $a0
+          sw $ra, -4($sp) # Save curr $ra
+          sw $t1, -8($sp) # Save current character
+          sw $s0, -12($sp) # Save top of val_stack
+          sw $s1, -16($sp) # Save top of op_stack
+          # $a0 = tp, $a1 = stack_base_addr
+          jal is_stack_empty
+          bgt $v0, $0, check_great_prec
+          lw $a0, 0($sp) # Resore $a0
+          lw $ra, -4($sp) # Restore curr $ra
+          lw $t1, -8($sp) # Restore current character
+          lw $s0, -12($sp) # top of val_stack
+          lw $s1, -16($sp) # top of op_stack
+          addi $sp, $sp, 20
+          j just_push
+          check_great_prec: # If there are other op with higher precedence
+            #peek -> compare prec
+            addi $sp, $sp, -20
+            sw $a0, 0($sp) # Save $a0
+            sw $ra, -4($sp) # Save curr $ra
+            sw $t1, -8($sp) # Save current character
+            sw $s0, -12($sp) # Save top of val_stack
+            sw $s1, -16($sp) # Save top of op_stack
+            jal stack_peek # $v0
+            lw $t1, -8($sp) # Restore current character
+            move $a0, $v0 # Check precedence for peek
+            jal op_precedence
+            move $t2, $v0 # $t2 holds precedence for peek
+            move $a0, $t1 # Check precedence for current operator
+            jal op_precedence # v0 holds current op prec
+            lw $a0, 0($sp) # Resore $a0
+            lw $ra, -4($sp) # Restore curr $ra
+            lw $t1, -8($sp) # Restore current character
+            lw $s0, -12($sp) # top of val_stack
+            lw $s1, -16($sp) # top of op_stack
+            bge $t2, $v0, compute # If stack has a higher prec, pop 2 values and 1 oper
+            j ignore_compute #otherwise, just push
+            compute:
+            # s0 =val, s1 =op
+            # t1 holds curr op
+              move $a0, $s1 # Pop operator
+              jal stack_pop
+            ignore_compute:
+            lw $a0, 0($sp) # Resore $a0
+            lw $ra, -4($sp) # Restore curr $ra
+            lw $t1, -8($sp) # Restore current character
+            lw $s0, -12($sp) # top of val_stack
+            lw $s1, -16($sp) # top of op_stack
+          addi $sp, $sp, 20
+          just_push:
+          addi $sp, $sp, -20
+          sw $a0, 0($sp) # Save $a0
+          sw $ra, -4($sp) # Save curr $ra
+          sw $t1, -8($sp) # Save current character
+          sw $s0, -12($sp) # Save top of val_stack
+          sw $s1, -16($sp) # Save top of op_stack
+          # (PUSH INTO OP STACK) $a0 = content, $a1 = tp (top of stack), $a2 = stack base_addr
+          move $a0, $t1 # Operator in $a0
+          move $a1, $s1 # Top of op_stack
+          move $a2, $s6 # Base address of operator stack
+          jal stack_push # Returns the new top
+          lw $a0, 0($sp) # Resore $a0
+          lw $ra, -4($sp) # Restore curr $ra
+          lw $t1, -8($sp) # Restore current character
+          lw $s0, -12($sp) # top of val_stack
+          move $s1, $v0 # New top of op_stack
+          addi $sp, $sp, 20 # Close stack
+    continue_loop:
+      addi $a0, $a0, 1 # Move to the next character
+      j push_to_stacks
+  finish_pushing:
+    # TODO: Compute!!!
   jr $ra
+  
+  ill_formed_err:
+    la $a0, ParseError
+    li $v0, 4
+    syscall
+    j end
 
 is_digit:
   # $a0 is a digit`
   li $t0, '0'
-  sge $v0, $a0, $t0
+  sge $v1, $a0, $t0 # $v1 = a0 >= 0
   li $t0, '9'
-  sle $v0, $a0, $t0
+  sle $t1, $a0, $t0 # $t1 = a0 <= 9
+  and $v0, $v1, $t1 # v0 = (a0 >= 0) && (a0 <= 9)
+#  sle $v0, $a0, $t0
   
   jr $ra
 
