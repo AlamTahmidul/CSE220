@@ -4,7 +4,7 @@ WrongArgMsg: .asciiz "You must provide exactly one argument"
 BadToken: .asciiz "Unrecognized Token"
 ParseError: .asciiz "Ill Formed Expression"
 ApplyOpError: .asciiz "Operator could not be applied"
-Test1: .asciiz "(3+5)"
+Test1: .asciiz "(2+9"
 
 val_stack : .word 1234
 op_stack : .word 5678

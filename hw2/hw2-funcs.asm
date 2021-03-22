@@ -147,7 +147,11 @@ eval:
             sw $s0, -12($sp) # Save top of val_stack
             sw $s1, -16($sp) # Save top of op_stack
             jal stack_peek # $v0
-            lw $t1, -8($sp) # Restore current character
+            lw $a0, 0($sp) # Save $a0
+            lw $ra, -4($sp) # Save curr $ra
+            lw $t1, -8($sp) # Save current character
+            lw $s0, -12($sp) # Save top of val_stack
+            lw $s1, -16($sp) # Save top of op_stack
             move $a0, $v0 # Check precedence for peek
             jal op_precedence
             move $t2, $v0 # $t2 holds precedence for peek
@@ -161,10 +165,59 @@ eval:
             bge $t2, $v0, compute # If stack has a higher prec, pop 2 values and 1 oper
             j ignore_compute #otherwise, just push
             compute:
-            # s0 =val, s1 =op
+            # s0 =val_tp, s1 =op_tp
             # t1 holds curr op
+            addi $sp, $sp, -20
+            sw $a0, 0($sp) # Save $a0
+            sw $ra, -4($sp) # Save curr $ra
+            sw $t1, -8($sp) # Save current character
+            sw $s0, -12($sp) # Save top of val_stack
+            sw $s1, -16($sp) # Save top of op_stack
               move $a0, $s1 # Pop operator
+              move $a1, $s6 # op_addr
               jal stack_pop
+              move $s1, $v0 # change op_tp
+              move $t2, $v1 # Popped operator ($t2)
+            lw $a0, 0($sp) # Resore $a0
+            lw $ra, -4($sp) # Restore curr $ra
+            lw $t1, -8($sp) # Restore current character
+            lw $s0, -12($sp) # top of val_stack
+            sw $s1, -16($sp) # Store new op_tp
+              move $a0, $s0 # Value_tp
+              move $a1, $s5 # val_addr
+              jal stack_pop
+                move $s0, $v0 # change val_tp
+              move $t3, $v1 # Popped value1 ($t3)
+            lw $a0, 0($sp) # Resore $a0
+            lw $ra, -4($sp) # Restore curr $ra
+            lw $t1, -8($sp) # Restore current character
+	    sw $s0, -12($sp) # store new val_tp
+	    move $a0, $s0
+	     jal is_stack_empty
+	     bgtz $v0, ill_formed_err
+            lw $a0, 0($sp) # Resore $a0
+            lw $ra, -4($sp) # Restore curr $ra
+            lw $t1, -8($sp) # Restore current character
+            lw $s0, -12($sp) # top of val_stack
+             move $a0, $s0
+             move $a1, $s5
+             jal stack_pop
+             move $s0, $v0
+             move $t4, $v1 # pop value2 ($t4)
+             sw $s0, -12($sp) # Store new val_tp
+             # apply bop
+             move $a0, $t4 # operand2
+             move $a1, $t2 # operator
+             move $a2, $t3 # operand1
+             jal apply_bop
+             move $s2, $v0 # put value in
+            lw $a0, 0($sp) # Resore $a0
+            lw $ra, -4($sp) # Restore curr $ra
+            lw $t1, -8($sp) # Restore current character
+            lw $s0, -12($sp) # top of val_stack
+            sw $s1, -16($sp) # Store new op_tp
+            addi $sp, $sp, 20
+             j push_val_stack # Move to value stack
             ignore_compute:
             lw $a0, 0($sp) # Resore $a0
             lw $ra, -4($sp) # Restore curr $ra
@@ -194,7 +247,16 @@ eval:
       addi $a0, $a0, 1 # Move to the next character
       j push_to_stacks
   finish_pushing:
-    # TODO: Compute!!!
+    beqz $s0, ill_formed_err
+    bge $s1, $s0, ill_formed_err
+    move $a0, $s0
+    move $a1, $s5
+    jal stack_pop
+    
+    move $a0, $v1
+    li $v0, 1
+    syscall
+    j end
   jr $ra
   
   ill_formed_err:
