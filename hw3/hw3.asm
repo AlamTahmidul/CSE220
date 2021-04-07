@@ -7,7 +7,6 @@
 ############################ DO NOT CREATE A .data SECTION ############################
 
 .text
-
 load_game: # Uses $s0, $s1, $s2
 	# int, int load_game(GameState* state, string filename) $a0, $a1
 
@@ -23,22 +22,41 @@ load_game: # Uses $s0, $s1, $s2
 	blez $v0, file_dne # $v0 = -1 (File does not exist)
 	move $s2, $v0 # $s2 has file descriptor
 	
-	move $s3, $sp # $s3 has Address of "buffer" ($sp)
-	li $t2, 4
+	li $t2, 1 # $t2 holds row #: 1 = 1st row, ..., 5 = 5th row
 	load_game_loop:
-		sub $sp, $sp, $t2
+		addi $sp, $sp, -4 # allocate sp
+		move $s3, $sp # $s3 has Address of "buffer" ($sp)
 		li $v0, 14 # Read file
 		move $a0, $s2 # File descriptor
 		move $a1, $s3 # File Buffer
 		li $a2, 1 # Read 1 character at a time
 		syscall
+
 		li $t0, '\r'
 		li $t1, '\n'
+		lw $t3, 0($sp) # $t3 Holds character
+		add $sp, $sp, 4 # Deallocate sp before doing anything else
+		beq $a0, $t0, cont_load_game_loop # If \r, then ignore
+		beq $a0, $t1, branch_row # Perform appropriate computation if \n
+		cont_load_game_loop:
+			j load_game_loop
 		
-		add $sp, $sp, $t2
-
-	
-	
+		branch_row: # rows 1-3 have a single number; $t3 holds character
+			li $t0, 1
+			li $t1, 3
+			sge $t4, $t2, $t0 # currentRowNumber >= 1
+			sle $t5, $t2, $t1 # currentRowNumber <= 3
+			and $t4, $t4, $t5 # $t4 is 1 <= currentRowNumber <= 3
+			beqz $t4, row_13_lg # If 0, then false else true
+		
+		row_13_lg:
+			# Do something
+			j cont_load_game_loop
+		row_4_lg:
+			# Do something
+		row_5_lg:
+			# Do something
+	end:
 	jr $ra
 	file_dne:
 		li $t0, -1
