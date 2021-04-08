@@ -7,7 +7,7 @@
 ############################ DO NOT CREATE A .data SECTION ############################
 
 .text
-load_game: # Uses $s0, $s1, $s2
+load_game: # Uses $s0, $s1, $s2, $s3
 	# int, int load_game(GameState* state, string filename) $a0, $a1
 
 	move $s0, $a0 # $s0 has *state
@@ -42,22 +42,29 @@ load_game: # Uses $s0, $s1, $s2
 			j load_game_loop
 		
 		branch_row: # rows 1-3 have a single number; $t3 holds character
-			li $t0, 1
-			li $t1, 3
+			li $t0, '1'
+			li $t1, '3'
 			sge $t4, $t2, $t0 # currentRowNumber >= 1
 			sle $t5, $t2, $t1 # currentRowNumber <= 3
 			and $t4, $t4, $t5 # $t4 is 1 <= currentRowNumber <= 3
 			beqz $t4, row_13_lg # If 0, then false else true
-		
+			li $t0, '4'
+			li $t1, '5'
+			beq $t2, $t0, row_4_lg # Go to Row 4 analysis
+			beq $t2, $t0, row_5_lg # Go to row 5 analysis
 		row_13_lg:
 			# Do something
-			j cont_load_game_loop
+			addi $t2, $t2, 1 # Increase row counter by 1
+			j cont_load_game_loop # Go to the last row
 		row_4_lg:
 			# Do something
+			addi $t2, $t2, 1 # Increase row counter by 1
+			j cont_load_game_loop # Go to the last row
 		row_5_lg:
 			# Do something
-	end:
-	jr $ra
+			
+	end_loop_game:
+		jr $ra
 	file_dne:
 		li $t0, -1
 		move $v0, $t0
