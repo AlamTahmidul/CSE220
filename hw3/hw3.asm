@@ -11,6 +11,17 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 	# int, int load_game(GameState* state, string filename) $a0, $a1
 	move $s0, $a0 # $s0 has *state
 	move $s1, $a1 # $s1 has filename
+	
+	move $t5, $s0 # $t5 stores a copy of *state
+	addi $t5, $t5, 6 # Start at the beginning of the pockets (0)
+	
+	# lbu $t0, 0($t5)
+	# move $a0, $t0
+	# li $v0, 1
+	# syscall
+
+	# li $v0, 10
+	# syscall
 
 	# Open File
 	move $a0, $a1 # $a0 = filename adress
@@ -22,6 +33,7 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 	move $s2, $v0 # $s2 has file descriptor
 	li $s4, 0 # Total num. of stones
 	li $s5, 0 # Construct actual number for byte
+	li $t6, 0 # Index from the right for bot_mancala
 	li $t2, 1 # $t2 holds row #: 1 = 1st row, ..., 5 = 5th row
 	load_game_loop:
 		li $t0, 5
@@ -44,16 +56,36 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 
 		li $t4, '0'
 		sub $t4, $t3, $t4 # $t4 = digit_in_ascii - '0' = value
-		add $s4, $s4, $t4 # $s4 += $t4
 
 		li $t0, 3
-		beq $t2, $t0, build_pockets_lg
+		beq $t2, $t0, build_pockets_lg # Row 3
+		li $t0, 4
+		beq $t2, $t0, top_update_lg # Row 4
+		li $t0, 5
+		beq $t2, $t0, bot_update_lg # Row 5
 		j cont_load_game_loop
+
 		build_pockets_lg:
 			li $t0, 10
 			mul $s5, $s5, $t0 # $s5 *= 10
 			add $s5, $s5, $t4 # $s5 += $t4
-		
+			j cont_load_game_loop
+		top_update_lg:
+			sb $t3, 0($t5) # Store into top mancala
+			addi $t5, $t5, 1 # Go to the next character
+			j cont_load_game_loop
+		bot_update_lg: # Can only use $s1 and $t7
+			# Do something
+			# 2 + top_pockets*2 + bot_pockets*2 - index
+			addi $t0, $0, 2
+			lb $t1, 2($s0) # top_pockets
+			add $t1, $t1, $t1 # top_pockets * 2
+			lb $t4, 3($s0) # bot_pockets
+			add $t4, $t1, $t1 # bot_pockets * 2
+			add $t4, $t4, $t1
+
+			addi $t6, $t6, 1 # Increase to next bit-index
+			j cont_load_game_loop
 		cont_load_game_loop:
 			j load_game_loop
 		
@@ -65,6 +97,7 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 			li $t0, 3
 			beq $t2, $t0, row_3_lg # 3rd row
 			addi $t2, $t2, 1
+			j cont_load_game_loop
 
 		row_1_lg: # First row; change stones top mancala 
 			sb $s5, 1($s0) # Update byte #1 in $s0 with $s5
@@ -128,11 +161,70 @@ load_moves:
 	jr $ra
 play_game:
 	jr  $ra
-print_board:
+print_board: # Uses $s0 = *state
+	# void print_board(GameState* state)
+	move $s0, $a0
+
+	move $t6, $s0
+	addi $t6, $t6, 6
+
+	lbu $a0, 0($t6) # First character in game_board
+	li $v0, 11
+	syscall
+
+	lbu $a0, 1($t6) # Second character in game_board
+	li $v0, 11
+	syscall
+
+	li $a0, '\n'
+	li $v0, 11
+	syscall
+	addi $t6, $t6, 2
+
+	lbu $t0, 2($s0) # bot_pockets
+	sll $t0, $t0, 1 # Multiply by 2
+	li $t1, 0 # # of players done
+	li $t3, 0 # Number of characters read
+	loop_print_board:
+		li $t2, 2 # Only 2 players!
+		beq $t1, $t2, exit_loop_pb # Leave loop
+		bge $t3, $t0, new_line_pb # Reached the end of the first player's mancala
+		
+		lbu $a0, 0($t6)
+		li $v0, 11
+		syscall
+		
+		j cont_loop_pb
+		
+		new_line_pb:
+			li $a0, '\n'
+			li $v0, 11
+			syscall
+			
+			addi $t1, $t1, 1 # next player
+			li $t3, 0
+			j loop_print_board
+
+		cont_loop_pb:
+			addi $t3, $t3, 1
+			addi $t6, $t6, 1 # Get next character
+			j loop_print_board
+
+	exit_loop_pb:
+		lbu $a0, 0($t6) # Penultimate character in game_board
+		li $v0, 11
+		syscall
+
+		lbu $a0, 1($t6) # Last character in game_board
+		li $v0, 11
+		syscall
+
 	jr $ra
 write_board:
 	jr $ra
-	
+end:
+	li $v0, 10
+	syscall
 ############################ DO NOT CREATE A .data SECTION ############################
 ############################ DO NOT CREATE A .data SECTION ############################
 ############################ DO NOT CREATE A .data SECTION ############################
