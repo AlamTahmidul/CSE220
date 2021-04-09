@@ -1,5 +1,5 @@
 .data
-board_filename: .asciiz "C:\\Users\\tamin\\Documents\\GitHub\\CSE220\\hw3\\game01_.txt"
+board_filename: .asciiz "C:\\Users\\tamin\\Documents\\GitHub\\CSE220\\hw3\\game01.txt"
 .align 2
 state:
     .byte 0         # bot_mancala       	(byte #0)
@@ -18,14 +18,17 @@ la $a0, state
 la $a1, board_filename
 jal load_game
 # You must write your own code here to check the correctness of the function implementation.
-#move $s0, $v0
-#move $s1, $v1
-#move $a0, $s0
-#li $v0, 1
-#syscall
-#move $a0, $s1
-#li $v0, 1
-#syscall
+
+move $s0, $v0
+move $s1, $v1
+
+move $a0, $s0
+li $v0, 1
+syscall
+
+move $a0, $s1
+li $v0, 1
+syscall
 
 li $v0, 10
 syscall
