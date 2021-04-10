@@ -200,7 +200,7 @@ print_board: # Uses $s0 = *state
 			li $a0, '\n'
 			li $v0, 11
 			syscall
-			
+
 			addi $t1, $t1, 1 # next player
 			li $t3, 0
 			j loop_print_board
@@ -222,9 +222,6 @@ print_board: # Uses $s0 = *state
 	jr $ra
 write_board:
 	jr $ra
-end:
-	li $v0, 10
-	syscall
 ############################ DO NOT CREATE A .data SECTION ############################
 ############################ DO NOT CREATE A .data SECTION ############################
 ############################ DO NOT CREATE A .data SECTION ############################
