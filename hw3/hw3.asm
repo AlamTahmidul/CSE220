@@ -29,8 +29,9 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 	li $a2, 0 # Ignore mode
 	li $v0, 13 # Open file
 	syscall
-	blez $v0, file_dne # $v0 = -1 (File does not exist)
+	blez $v0, file_dne # $v0, $v1 = -1 (File does not exist)
 	move $s2, $v0 # $s2 has file descriptor
+
 	li $s4, 0 # Total num. of stones
 	li $s5, 0 # Construct actual number for byte
 	li $t6, 0 # Index from the right for bot_mancala
@@ -72,17 +73,32 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 			j cont_load_game_loop
 		top_update_lg:
 			sb $t3, 0($t5) # Store into top mancala
-			addi $t5, $t5, 1 # Go to the next character
+			
+			li $t0, 2
+			div $t6, $t0 # $t6 / $t0
+			mfhi $t0 # $t0 = $t6 mod $t0
+			bgtz $t0, mult_10_lg # If 1, then reset $s5
+			
+			li $t0, 10
+			mul $s5, $s5, $t0 # $s5 *= 10
+			add $s5, $s5, $t4 # $s5 += value
+
+			j cont_top_update_lg
+
+			mult_10_lg:
+				add $s4, $s4, $s5 # stone_count += $s5
+				li $s5, 0			
+			cont_top_update_lg:
+				addi $t5, $t5, 1 # Go to the next character
+				addi $t6, $t6, 1 # Increase character counter
 			j cont_load_game_loop
 		bot_update_lg: # Can only use $s1 and $t7
 			# Do something
-			# 2 + top_pockets*2 + bot_pockets*2 - index
+			# 2 + top_pockets*2 + bot_pockets*2 - index == 2 + (top_pockets*4) - index
 			addi $t0, $0, 2
 			lb $t1, 2($s0) # top_pockets
-			add $t1, $t1, $t1 # top_pockets * 2
-			lb $t4, 3($s0) # bot_pockets
-			add $t4, $t1, $t1 # bot_pockets * 2
-			add $t4, $t4, $t1
+			sll $t1, $t1, 2 # Multiply by 4
+			
 
 			addi $t6, $t6, 1 # Increase to next bit-index
 			j cont_load_game_loop
@@ -97,6 +113,7 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 			li $t0, 3
 			beq $t2, $t0, row_3_lg # 3rd row
 			addi $t2, $t2, 1
+			li $t6, 0 # Reset counter for bit-location
 			j cont_load_game_loop
 
 		row_1_lg: # First row; change stones top mancala 
