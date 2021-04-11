@@ -259,11 +259,73 @@ get_pocket: # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = Num. of poc
 		move $v0, $t0
 		jr $ra
 	get_pocket_err:
-		li $t0, -1
-		move $v0, $t0
+		li $v0, -1
 		jr $ra
-set_pocket:
-	jr $ra
+set_pocket: # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4 = pockets, $s5 = position
+	# int set_pocket(GameState* state, byte player, byte distance, int size)
+	move $s0, $a0
+	move $s1, $a1
+	move $s2, $a2
+	move $s3, $a3
+
+	sge $t0, $s3, $0  # size >= 0
+	li $t1, 99
+	sle $t1, $s3, $t1 # size < 99
+	and $t1, $t0, $t1 # if size >= 0 && size < 99 then $t1 = 1
+	beqz $t1, set_pocket_err_beyond_below
+
+	lb $t0, 2($s0) # Get num. of pockets in $t0
+	move $s4, $t0
+	sge $t1, $s2, $0 # if distance >= 0
+	slt $t2, $s2, $t0  # if distance < num_pockets
+	and $t1, $t1, $t2 # if distance >= 0 && distance < num_pockets
+	beqz $t1, set_pocket_err_invalid # Otherwise, invalid pocket
+
+	li $t1, 'B'
+	beq $s1, $t1, bot_player_set_pocket
+	li $t1, 'T'
+	beq $s1, $t1, top_player_set_pocket
+	j set_pocket_err_invalid # Otherwise, invalid player
+
+	top_player_set_pocket:
+		sll $s2, $s2, 1 # Multiply distance by 2
+		move $s5, $s2
+
+		j ret_set_pocket
+	bot_player_set_pocket:
+		# Position: 4*pockets - 2*distance - 2
+		sll $s4, $s4, 2 # 4*pockets
+		sll $s2, $s2, 1 # 2*distance
+		sub		$t0, $s4, $s2		# $t0 = $s4 - $s2
+		li $t1, 2
+		sub		$t0, $t0, $t1		# $t0 = $t0 - $t1
+		move $s5, $t0 # Position
+
+		j ret_set_pocket
+	ret_set_pocket:
+		move $t0, $s0
+		addi $t0, $t0, 8
+		add $t0, $t0, $s5
+		
+		li $t1, 10
+		div		$s3, $t1			# $s3 / $t1
+		mflo	$t2					# $t2 = floor($s3 / $t1) 
+		mfhi	$t3					# $t3 = $s3 mod $t1 
+		li $t1, '0'
+		add $t2, $t2, $t1 # Convert first digit to ascii
+		add $t3, $t3, $t1 # Convert second digit to ascii
+
+		sb $t2, 0($t0)
+		sb $t3, 1($t0)
+
+		move $v0, $s3
+		jr $ra
+	set_pocket_err_invalid:
+		li $v0, -1
+		jr $ra
+	set_pocket_err_beyond_below:
+		li $v0, -2
+		jr $ra
 collect_stones:
 	jr $ra
 verify_move:
@@ -296,8 +358,8 @@ print_board: # Uses $s0 = *state
 	li $a0, '\n'
 	li $v0, 11
 	syscall
+	
 	addi $t6, $t6, 2
-
 	lbu $t0, 2($s0) # bot_pockets
 	sll $t0, $t0, 1 # Multiply by 2
 	li $t1, 0 # # of players done
@@ -305,7 +367,7 @@ print_board: # Uses $s0 = *state
 	loop_print_board:
 		li $t2, 2 # Only 2 players!
 		beq $t1, $t2, exit_loop_pb # Leave loop
-		bge $t3, $t0, new_line_pb # Reached the end of the first player's mancala
+		beq $t3, $t0, new_line_pb # Reached the end of the first player's mancala
 		
 		lbu $a0, 0($t6)
 		li $v0, 11
