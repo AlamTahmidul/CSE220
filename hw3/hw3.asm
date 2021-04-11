@@ -37,8 +37,8 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 	li $t6, 0 # Index from the right for bot_mancala
 	li $t2, 1 # $t2 holds row #: 1 = 1st row, ..., 5 = 5th row
 	load_game_loop:
-		li $t0, 5
-		bge $t2, $t0, end_loop_game
+		li $t0, 6
+		beq $t2, $t0, end_loop_game
 		addi $sp, $sp, -4 # allocate sp to hold 1 character
 		move $s3, $sp # $s3 has Address of "buffer" ($sp)
 		li $v0, 14 # Read file
@@ -46,10 +46,11 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 		move $a1, $s3 # File Buffer
 		li $a2, 1 # Read 1 character at a time
 		syscall # Put the character in the stack pointer
+		beqz $v0, end_loop_game
 
 		lw $t3, 0($sp) # $t3 Holds digit in ascii
 		addi $sp, $sp, 4 # Deallocate sp before doing anything else
-		
+
 		li $t0, '\r'
 		beq $t3, $t0, cont_load_game_loop # If \r, then ignore
 		li $t0, '\n'
@@ -58,6 +59,10 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 		li $t4, '0'
 		sub $t4, $t3, $t4 # $t4 = digit_in_ascii - '0' = value
 
+		li $t0, 1
+		beq $t2, $t0, build_pockets_lg # Row 1
+		li $t0, 2
+		beq $t2, $t0, build_pockets_lg # Row 2
 		li $t0, 3
 		beq $t2, $t0, build_pockets_lg # Row 3
 		li $t0, 4
@@ -70,7 +75,12 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 			li $t0, 10
 			mul $s5, $s5, $t0 # $s5 *= 10
 			add $s5, $s5, $t4 # $s5 += $t4
+			
+			# move $a0, $s5
+			# li $v0, 1
+			# syscall
 			j cont_load_game_loop
+		bot_update_lg:
 		top_update_lg:
 			sb $t3, 0($t5) # Store into top mancala
 			
@@ -80,28 +90,21 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 			bgtz $t0, mult_10_lg # If 1, then reset $s5
 			
 			li $t0, 10
-			mul $s5, $s5, $t0 # $s5 *= 10
 			add $s5, $s5, $t4 # $s5 += value
-
 			j cont_top_update_lg
 
 			mult_10_lg:
+				mul $s5, $s5, $t0 # $s5 *= 10
+				add $s5, $s5, $t4 # $s5 += value
 				add $s4, $s4, $s5 # stone_count += $s5
-				li $s5, 0			
+				li $s5, 0
+				
+				# move $a0, $s4
+				# li $v0, 1
+				# syscall
 			cont_top_update_lg:
 				addi $t5, $t5, 1 # Go to the next character
 				addi $t6, $t6, 1 # Increase character counter
-			j cont_load_game_loop
-		bot_update_lg: # Can only use $s1 and $t7
-			# Do something
-			# 2 + top_pockets*2 + bot_pockets*2 - index == 2 + (top_pockets*4) - index
-			addi $t0, $0, 2
-			lb $t1, 2($s0) # top_pockets
-			sll $t1, $t1, 2 # Multiply by 4
-			
-
-			addi $t6, $t6, 1 # Increase to next bit-index
-			j cont_load_game_loop
 		cont_load_game_loop:
 			j load_game_loop
 		
@@ -113,7 +116,7 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 			li $t0, 3
 			beq $t2, $t0, row_3_lg # 3rd row
 			addi $t2, $t2, 1
-			li $t6, 0 # Reset counter for bit-location
+			# li $t6, 0 # Reset counter for bit-location
 			j cont_load_game_loop
 
 		row_1_lg: # First row; change stones top mancala 
@@ -134,17 +137,20 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 			j cont_load_game_loop # Go to the next row
 
 	end_loop_game:
-		li $t0, 99
-		sge $t0, $s4, $t0 # If 1 then number of stones is more than 99
+		lbu $t0, 0($s0)
+		add $s4, $s4, $t0
+		lbu $t0, 1($s0)
+		add $s4, $s4, $t0
+		li $t0, 99 
+		sge $t0, $s4, $t0 # If number of stones is more than 99 then 1
 		bgtz $t0, ex_stones_lg # If more than 99
 		li $t0, 1 # Otherwise, $v0 is 1 (abide by rules)
 		move $v0, $t0
 		check_v1_lg:
 			lbu $t0, 2($s0) # Load bot_pockets
 			li $t1, 98
-			bgt $t0, $t1, ex_pockets_lg # pockets > 98 then extra pockets
-
 			add $t0, $t0, $t0 # Multiply by 2 to get the total number of pockets
+			bgt $t0, $t1, ex_pockets_lg # pockets > 98 then extra pockets
 			move $v1, $t0 # Normal num. of pockets
 		return_lg:
 			jr $ra
@@ -160,8 +166,25 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 		move $v0, $t0
 		move $v1, $t0
 		jr $ra
-get_pocket:
-	jr $ra
+get_pocket: # Uses $s0 = *state, $s1 = player, $s2 = distance
+	# int get_pocket(GameState* state, byte player, byte distance)
+	move $s0, $a0
+	move $s1, $a1
+	move $s2, $a2
+
+	li $t0, 'B'
+	li $t1, 0
+	or $t1, $t0, $a1 # $t1 = 0 or player == 'B'
+	li $t0, 'T'
+	or $t1, $t0, $a1 # $t1 = player == 'B' or player == 'T'
+	beqz $t1, get_pocket_err
+
+	ret_get_pocket:
+		jr $ra
+	get_pocket_err:
+		li $t0, -1
+		move $v0, $t0
+		j ret_get_pocket
 set_pocket:
 	jr $ra
 collect_stones:
