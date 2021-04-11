@@ -396,8 +396,6 @@ verify_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = distance
 	# Otherwise, valid origin_pocket
 	li $t0, 99
 	beq		$t0, $s2, vm_other_turn	# if $t0 == $s2 then vm_other_turn
-	
-
 	addi $sp, $sp, -8
 	sb $s1, 0($sp)
 	sb $s2, -4($sp)
@@ -452,6 +450,7 @@ verify_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = distance
 		li $v0, 0
 		jr $ra
 execute_move:
+
 	jr $ra
 steal:
 	jr $ra
