@@ -13,7 +13,7 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 	move $s1, $a1 # $s1 has filename
 	
 	move $t5, $s0 # $t5 stores a copy of *state
-	addi $t5, $t5, 6 # Start at the beginning of the pockets (0)
+	addi $t5, $t5, 8 # Start at the beginning of the pockets (0)
 	
 	# lbu $t0, 0($t5)
 	# move $a0, $t0
@@ -121,11 +121,49 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 
 		row_1_lg: # First row; change stones top mancala 
 			sb $s5, 1($s0) # Update byte #1 in $s0 with $s5
+
+			move $t7, $s0
+			addi $t7, $t7, 6
+			
+			li $t0, 10
+			div		$s5, $t0			# $s5 / $t0
+			mflo	$t0					# $t0 = floor($s5 / $t0) 
+			mfhi	$t1					# $t1 = $s5 mod $t0
+			addi $t0, $t0, '0' # ASCII representation for first digit
+			addi $t1, $t1, '0' # ASCII representation for second digit
+
+			# li $v0, 1
+			# syscall
+			# lbu $a0, 1($t7)
+			# li $v0, 1
+			# syscall
+			# j end
+
+			sb $t0, 0($t7)
+			sb $t1, 1($t7)
+
 			addi $t2, $t2, 1 # Increase row counter by 1
 			li $s5, 0 # Reset variable
 			j cont_load_game_loop # Go to the next row
 		row_2_lg: # 2nd row; change stones bot mancala (update byte #0 with $s5)
 			sb $s5, 0($s0) # Update byte #0 in $s0 with $s5
+
+			move $t7, $s0
+			lbu $t0, 2($s0) # Get num. of pockets
+			sll $t0, $t0, 2 # Multiply the num. of pockets by 4
+			addi $t7, $t7, 8 # Move t7 to the game_board (and skip the first 2 characters)
+			add $t7, $t7, $t0 # Move to the last 2 characters
+
+			li $t0, 10
+			div		$s5, $t0			# $s5 / $t0
+			mflo	$t0					# $t0 = floor($s5 / $t0) 
+			mfhi	$t1					# $t1 = $s5 mod $t0
+			addi $t0, $t0, '0'
+			addi $t1, $t1, '0'
+
+			sb $t0, 0($t7)
+			sb $t1, 1($t7)
+
 			addi $t2, $t2, 1 # Increase row counter by 1
 			li $s5, 0 # Reset variable
 			j cont_load_game_loop # Go to the next row
@@ -173,11 +211,19 @@ get_pocket: # Uses $s0 = *state, $s1 = player, $s2 = distance
 	move $s2, $a2
 
 	li $t0, 'B'
-	li $t1, 0
-	or $t1, $t0, $a1 # $t1 = 0 or player == 'B'
+	seq $t1, $t0, $a1 # $t1 = player == 'B'
 	li $t0, 'T'
-	or $t1, $t0, $a1 # $t1 = player == 'B' or player == 'T'
+	seq $t2, $t0, $a1 # $t2 = player == 'T'
+	or $t1, $t1, $t2 # $t1 = player == 'B' || player == 'T'
 	beqz $t1, get_pocket_err
+	# Otherwise, player is valid
+	lbu $t0, 2($s0)
+	sgeu $t1, $s2, $0 # if distance >= 0
+	sltu $t2, $s2, $t0 # if distance < pockets
+	and $t1, $t1, $t2 # if distance >= 0 && distance < pockets then $t1 = 1
+	beqz $t1, get_pocket_err # invalid distance; error
+	# Otherwise, player and distance are valid
+
 
 	ret_get_pocket:
 		jr $ra
@@ -262,6 +308,9 @@ print_board: # Uses $s0 = *state
 	jr $ra
 write_board:
 	jr $ra
+end:
+	li $v0, 10
+	syscall
 ############################ DO NOT CREATE A .data SECTION ############################
 ############################ DO NOT CREATE A .data SECTION ############################
 ############################ DO NOT CREATE A .data SECTION ############################
