@@ -394,26 +394,62 @@ verify_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = distance
 	and $t1, $t1, $t2 # if origin_pocket >= 0 && origin_pocket < num. of pockets
 	beqz $t1, vm_err_invalid_origin
 	# Otherwise, valid origin_pocket
+	li $t0, 99
+	beq		$t0, $s2, vm_other_turn	# if $t0 == $s2 then vm_other_turn
+	
+
 	addi $sp, $sp, -8
 	sb $s1, 0($sp)
 	sb $s2, -4($sp)
 	sw $ra, -8($sp)
 	move $a0, $s0
 	lb $a1, 5($s0)
-	move $a2, $s2
-	jal get_pockets # *state, player, distance
+	move $a2, $s1
+	jal get_pocket # *state, player, distance
+
 	move $t0, $v0 # $t0 holds number of stones in the origin_pocket
 	lb $s1, 0($sp)
 	lb $s2, -4($sp)
 	lw $ra, -8($sp)
 	addi $sp, $sp, 8
 
-	
-
+	beqz $t0, vm_err_noStones # origin_pocket has 0 stones
+	beqz $s2, vm_err_dist_neStones # distance = 0 then error
+	bne		$s2, $t0, vm_err_dist_neStones	# if $s2 != $t0 then vm_err_dist_neStones
+	li $v0, 1
+	j return_verify_move
+	vm_other_turn:
+		# 1. Change to other player
+		# 2. Increase moves_executed by 1
+		lb $t0, 5($s0) # Get current player
+		li $t1, 'B'
+		beq $t0, $t1, change_to_T
+		li $t1, 'T'
+		beq $t0, $t1, change_to_B
+		change_to_T:
+			li $t1, 'T'
+			sb $t1, 5($s0)
+			j con_vm_other_turn
+		change_to_B:
+			li $t1, 'B'
+			sb $t1, 5($s0)
+			j con_vm_other_turn
+		con_vm_other_turn:
+			lb $t1, 4($s0) # Get moves excuted
+			addi $t1, $t1, 1 # increment by 1
+			sb $t1, 4($s0) # Update moves_executed
+			li $v0, 2
+			j return_verify_move
 	return_verify_move:
 		jr  $ra
 	vm_err_invalid_origin:
 		li $v0, -1
+		jr $ra
+	vm_err_dist_neStones:
+		li $v0, -2
+		jr $ra
+	vm_err_noStones:
+		li $v0, 0
 		jr $ra
 execute_move:
 	jr $ra
