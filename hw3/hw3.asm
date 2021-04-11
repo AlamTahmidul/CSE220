@@ -204,33 +204,64 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 		move $v0, $t0
 		move $v1, $t0
 		jr $ra
-get_pocket: # Uses $s0 = *state, $s1 = player, $s2 = distance
+get_pocket: # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = Num. of pockets, $s4 = Position
 	# int get_pocket(GameState* state, byte player, byte distance)
 	move $s0, $a0
 	move $s1, $a1
 	move $s2, $a2
 
-	li $t0, 'B'
-	seq $t1, $t0, $a1 # $t1 = player == 'B'
-	li $t0, 'T'
-	seq $t2, $t0, $a1 # $t2 = player == 'T'
-	or $t1, $t1, $t2 # $t1 = player == 'B' || player == 'T'
-	beqz $t1, get_pocket_err
-	# Otherwise, player is valid
-	lbu $t0, 2($s0)
+	lbu $t0, 2($s0) # Load num. of pockets
+	move $s3, $t0 # $s3 = num. of pockets
 	sgeu $t1, $s2, $0 # if distance >= 0
 	sltu $t2, $s2, $t0 # if distance < pockets
 	and $t1, $t1, $t2 # if distance >= 0 && distance < pockets then $t1 = 1
 	beqz $t1, get_pocket_err # invalid distance; error
-	# Otherwise, player and distance are valid
+	# Otherwise, distance is valid
+	move $t3, $s0
+	addi $t3, $t3, 8
 
+	li $t0, 'B'
+	beq		$t0, $s1, bot_player_get_pocket	# if $t0 == $s1 then bot_player_get_pocket
+	li $t0, 'T'
+	beq		$t0, $s1, top_player_get_pocket	# if $t0 == $s1 then top_player_get_pocket
+	j get_pocket_err # Otherwise, player is invalid
 
+	bot_player_get_pocket:
+		# Position: 4*pockets - 2*distance - 2
+		sll $s3, $s3, 2 # 4*pockets
+		sll $s2, $s2, 1 # 2*distance
+		sub		$t0, $s3, $s2		# $t0 = $s3 - $s2
+		li $t1, 2
+		sub		$t0, $t0, $t1		# $t0 = $t0 - $t1
+		move $s4, $t0 # Position
+
+		j ret_get_pocket
+	top_player_get_pocket:
+		sll $s2, $s2, 1 # Multiply distance by 2
+		move $s4, $s2
+
+		j ret_get_pocket
 	ret_get_pocket:
+		add $t3, $t3, $s4 # Starting from the first pocket find the relative position
+		
+		li $t0, '0'
+		lbu $t1, 0($t3) # First bit is the first digit in ascii
+		sub		$t1, $t1, $t0		# $t1 = $t1 - $t0; get the actual value of digit
+		
+		li $t0, 10
+		mul $t1, $t1, $t0 # Multiply first digit by 10
+		
+		li $t0, '0'
+		lbu $t2, 1($t3) # Second bit is the second digit in ascii
+		sub $t2, $t2, $t0 # Get the actual value of second digit
+
+		add $t0, $t1, $t2 # Form the number of stones in the specified pocket
+		move $v0, $t0
 		jr $ra
 	get_pocket_err:
 		li $t0, -1
 		move $v0, $t0
-		j ret_get_pocket
+		jr $ra
 set_pocket:
 	jr $ra
 collect_stones:
