@@ -382,8 +382,39 @@ collect_stones: # Uses $s0 = *state, $s1 = player, $s2 = stones
 	cs_err_stoneCount:
 		li $v0, -2
 		jr $ra
-verify_move:
-	jr  $ra
+verify_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = distance
+	# int verify_move(GameState* state, byte origin_pocket, byte distance)
+	move $s0, $a0
+	move $s1, $a1
+	move $s2, $a2
+
+	lbu $t0, 2($s0) # Load num. of pockets
+	sge $t1, $s1, $0 # if origin_pocket >= 0
+	slt $t2, $s1, $t0 # if origin_pocket < num. of pockets
+	and $t1, $t1, $t2 # if origin_pocket >= 0 && origin_pocket < num. of pockets
+	beqz $t1, vm_err_invalid_origin
+	# Otherwise, valid origin_pocket
+	addi $sp, $sp, -8
+	sb $s1, 0($sp)
+	sb $s2, -4($sp)
+	sw $ra, -8($sp)
+	move $a0, $s0
+	lb $a1, 5($s0)
+	move $a2, $s2
+	jal get_pockets # *state, player, distance
+	move $t0, $v0 # $t0 holds number of stones in the origin_pocket
+	lb $s1, 0($sp)
+	lb $s2, -4($sp)
+	lw $ra, -8($sp)
+	addi $sp, $sp, 8
+
+	
+
+	return_verify_move:
+		jr  $ra
+	vm_err_invalid_origin:
+		li $v0, -1
+		jr $ra
 execute_move:
 	jr $ra
 steal:
