@@ -326,8 +326,62 @@ set_pocket: # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4 =
 	set_pocket_err_beyond_below:
 		li $v0, -2
 		jr $ra
-collect_stones:
-	jr $ra
+collect_stones: # Uses $s0 = *state, $s1 = player, $s2 = stones
+	# int collect_stones(GameState* state, byte player, int stones)
+	move $s0, $a0
+	move $s1, $a1
+	move $s2, $a2
+
+	li $t0, 'B'
+	beq		$t0, $s1, bot_player_cs	# if $t0 == $s1 then valid_player_cs
+	li $t0, 'T'
+	beq		$t0, $s1, top_player_cs	# if $t0 == $s1 then valid_player_cs
+	j cs_err_player
+	bot_player_cs:
+		blez $s2, cs_err_stoneCount
+		sb $s2, 0($s0)
+		lb $t1, 2($s0)  # Load number of pockets
+		sll $t1, $t1, 2 # Multiply by 4
+		move $t0, $s0
+		addi $t0, $t0, 9
+		add $t0, $t0, $t1
+
+		li $t1, 10
+		div		$s2, $t1			# $s2 / $t1
+		mflo	$t2					# $t2 = floor($s2 / $t1) ; first_digit
+		mfhi	$t3					# $t3 = $s2 mod $t1 ; second_digit
+		addi $t2, $t2, '0' # First digit ASCII
+		addi $t3, $t3, '0' # Second digit ASCII
+
+		sb $t2, 0($t0) # Update bot mancala (1st digit)
+		sb $t3, 1($t0) # Update bot mancala (2nd digit)
+		j return_cs
+	top_player_cs:
+		blez $s2, cs_err_stoneCount
+		sb $s2, 1($s0)
+		move $t0, $s0
+		addi $t0, $t0, 6
+
+		li $t1, 10
+		div		$s2, $t1			# $s2 / $t1
+		mflo	$t2					# $t2 = floor($s2 / $t1) 
+		mfhi	$t3					# $t3 = $s2 mod $t1 
+		addi $t2, $t2, '0' # First digit ASCII
+		addi $t3, $t3, '0' # Second digit ASCII
+
+		sb $t2, 0($t0) # Update top mancala (1st digit)
+		sb $t3, 1($t0) # Update top mancala (2nd digit)
+
+		j return_cs
+	return_cs:
+		move $v0, $s2
+		jr $ra
+	cs_err_player:
+		li $v0, -1
+		jr $ra
+	cs_err_stoneCount:
+		li $v0, -2
+		jr $ra
 verify_move:
 	jr  $ra
 execute_move:
