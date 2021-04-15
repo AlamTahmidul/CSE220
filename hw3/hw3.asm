@@ -433,7 +433,7 @@ verify_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = distance
 			sb $t1, 5($s0)
 			j con_vm_other_turn
 		con_vm_other_turn:
-			lb $t1, 4($s0) # Get moves excuted
+			lb $t1, 4($s0) # Get moves executed
 			addi $t1, $t1, 1 # increment by 1
 			sb $t1, 4($s0) # Update moves_executed
 			li $v0, 2
@@ -449,9 +449,152 @@ verify_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = distance
 	vm_err_noStones:
 		li $v0, 0
 		jr $ra
-execute_move:
+execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3 = num of stones, $s4 = current iteration, $s5 = Flag, $s6 = player
+	# int, int execute_move(GameState* state, byte origin_pocket)
+	move $s0, $a0
+	move $s1, $a1  
 
-	jr $ra
+	lb $s2, 5($s0) # Get the current player
+	li $t1, 'B'
+	beq $s2, $t1, move_player_B	# Bottom player moves
+	li $t1, 'T'
+	beq $s2, $t1, move_player_T # Top player moves
+
+	move_player_B:
+		# Implement how the bottom player moves
+		# Increment mancala of bottom player if current player is bottom
+		# 	Otherwise, skip it
+
+		addi $sp, $sp, -24
+		sb $s0, 0($sp)
+		sb $s1, -4($sp)
+		sb $s2, -8($sp)
+		sb $s3, -12($sp)
+		sb $s4, -16($sp)
+		sw $ra, -20($sp)
+
+		move $a0, $s0
+		move $a1, $s2
+		move $a2, $s1
+		jal get_pocket # Get num of stones in the pocket; Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
+		
+		lb $s0, 0($sp)
+		lb $s1, -4($sp)
+		lb $s2, -8($sp)
+		lb $s3, -12($sp)
+		lb $s4, -16($sp)
+		lw $ra, -20($sp)
+		addi $sp, $sp, 24
+		move $s3, $v0 # Store the number of stones to iterate through
+
+		# Set the number of stones in the current pocket to 0 (Basically, pick up all the stones)
+			addi $sp, $sp, -28
+			sb $s0, 0($sp)
+			sb $s1, -4($sp)
+			sb $s2, -8($sp)
+			sb $s3, -12($sp)
+			sb $s4, -16($sp)
+			sb $s5, -20($sp)
+			sw $ra, -24($sp)
+
+			move $a0, $s0 # *state
+			move $a1, $s2 # player
+			move $a2, $s1 # distance
+			move $a3, $0 # size
+			jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
+
+			lb $s0, 0($sp)
+			lb $s1, -4($sp)
+			lb $s2, -8($sp)
+			lb $s3, -12($sp)
+			lb $s4, -16($sp)
+			lb $s5, -20($sp)
+			lw $ra, -24($sp)
+			addi $sp, $sp, 28
+
+		move $s6, $s2 # get a copy of the current player
+		li $s4, 0 # Total number of stones added
+		li $s5, 1 # Flag for bottom movement and top movement
+		addi $s1, $s1, -1 # Go to the next pocket
+		loop_player_B_em:
+			beq $s4, $s3, exit_loop_em # Filled all the stones
+			bltz $s1, iterate_like_T # If index is negative, then toggle flag and check mancala
+			j after_iterate_like_T
+
+			after_iterate_like_T:
+				addi $sp, $sp, -24
+				sb $s0, 0($sp)
+				sb $s1, -4($sp)
+				sb $s2, -8($sp)
+				sb $s3, -12($sp)
+				sb $s4, -16($sp)
+				sw $ra, -20($sp)
+
+				move $a0, $s0 # *state
+				move $a1, $s6 # player
+				move $a2, $s1 # distance
+				jal get_pocket # Get num of stones in the pocket; Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
+
+				lb $s0, 0($sp)
+				lb $s1, -4($sp)
+				lb $s2, -8($sp)
+				lb $s3, -12($sp)
+				lb $s4, -16($sp)
+				lw $ra, -20($sp)
+				addi $sp, $sp, 24
+
+				move $t0, $v0
+				addi $t0, $t0, 1 # Increase stone by 1
+				
+				addi $sp, $sp, -28
+				sb $s0, 0($sp)
+				sb $s1, -4($sp)
+				sb $s2, -8($sp)
+				sb $s3, -12($sp)
+				sb $s4, -16($sp)
+				sb $s5, -20($sp)
+				sw $ra, -24($sp)
+
+				move $a0, $s0 # *state
+				move $a1, $s6 # player
+				move $a2, $s1 # distance
+				move $a3, $t0 # size
+				jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
+
+				lb $s0, 0($sp)
+				lb $s1, -4($sp)
+				lb $s2, -8($sp)
+				lb $s3, -12($sp)
+				lb $s4, -16($sp)
+				lb $s5, -20($sp)
+				lw $ra, -24($sp)
+				addi $sp, $sp, 28
+				
+				addi $s1, $s1, -1 # Go to the next pocket (Counter-clockwise)
+				
+				j loop_player_B_em # Same procedure: Get the pocket and increment the pocket by 1
+			
+			iterate_like_T: # Flag == 0, move like T otherwise move like B
+				# Check if mancala if player's
+				# If player's, then add to mancala. Else ignore
+				# Then change the index depending on the condition
+				beqz $s5, player_mancala_em
+
+				li $s5, 1 # Switch flag to 1 (meaning move from top pockets)
+				j after_iterate_like_T
+				player_mancala_em: # Add stone to player's mancala
+					# 
+					li $s6, 'T'
+					j after_iterate_like_T
+					
+	move_player_T:
+		# Implement how the top player moves
+		# Start from i and move counter-clockwise
+		addToA_mancala_execute_move:
+			# Adds Mancala to A
+	exit_loop_em:
+
+		jr $ra
 steal:
 	jr $ra
 check_row:
