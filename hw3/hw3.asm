@@ -829,7 +829,7 @@ steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number
 		lb $s3, -12($sp)
 		lw $ra, -16($sp)
 		addi $sp, $sp, 20
-		
+
 		add $s3, $s3, $v0 # Increment the total number of stones
 	# Set the number of stones in the opposite of the destination_pocket to 0
 		addi $sp, $sp, -20
@@ -876,8 +876,244 @@ steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number
 	# $v0 = number of stones added to player's mancala
 	move $v0, $s3
 	jr $ra
-check_row:
-	jr $ra
+check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = from the top to the bottom/total_stones, $s4 = flags for (non-)empty, $s5 = player with empty mancala, $s6 = Exit
+	# int check_row(GameState* state)
+	move $s0, $a0
+
+	li $s1, 0 # Keeps track of how many iterations done
+	lb $s2, 2($s0) # Max. Number of iteration to go through
+	sll $s2, $s2, 1 # Multiply by 2
+
+	addi $s3, $s0, 8 # Go to the first pocket in the top mancala
+	li $s4, 0 # If 1 then top row is empty, if 3 then top and bot are empty, if 4 then only bot row is empty otherwise, both rows are not empty
+	li $s5, 'T' # The player with the empty mancala
+	li $s6, -1 # Exit command (i.e. both rows checked) when 1
+
+	loop_check_row:
+		# bgtz $s6, exit_loop_cr # Exit; Looked through both rows
+		beq $s1, $s2, check_other_row_cw
+
+		lb $t0, 0($s3)
+		li $t1, '0'
+		bne $t0, $t1, row_not_empty_cr1 # Non-empty row found
+		
+		# Empty so far. Get next char
+		addi $s3, $s3, 1
+		addi $s1, $s1, 1
+		j loop_check_row
+
+		check_other_row_cw:
+			addi $s4, $s4, 1 # Top/Bot is empty
+			li $t0, 'T'
+			beq $t0, $s5, check_bot_cr # Check bot_player's pockets
+			addi $s4, $s4, 2 # Bot row is empty
+			j exit_loop_cr # Exit
+		row_not_empty_cr1:
+			li $t0, 'T'
+			beq $t0, $s5, check_bot_cr # Check bot_player's pockets
+			j exit_loop_cr # Otherwise, exit
+			check_bot_cr:
+				li $s5, 'B'
+				li $s1, 0 # reset index to 0
+				addi $s3, $s0, 8
+				add $s3, $s3, $s2 # Go to the bot_row
+			c_row_not_empty_cr1:
+				addi $s6, $s6, 1
+				j loop_check_row
+	exit_loop_cr:
+		# cases: 0 = non-empty, 1 = top-empty, 3 = bot-empty, 4 = both-empty
+		li $v0, 0
+		beqz $s4, none_empty_cr
+		li $t0, 4
+		beq $s4, $t0, both_empty_cr
+		li $t0, 1
+		beq $s4, $t0, only_top_empty_cr
+		li $t0, 3
+		beq $s4, $t0, only_bot_empty_cr
+		j end		
+		only_top_empty_cr:
+			# Move all stones from bot_pockets to bot_mancala
+			li $s1, 0
+			lb $s2, 2($s0)
+			li $s3, 0
+			loop_only_top_cr:
+				beq $s1, $s2, exit_loop_only_top_cr
+
+				addi $sp, $sp, -20
+				sw $s0, 0($sp)
+				sb $s1, -4($sp)
+				sb $s2, -8($sp)
+				sb $s3, -12($sp)
+				sw $ra, -16($sp)
+
+				move $a0, $s0
+				li $a1, 'B'
+				move $a2, $s1
+				jal get_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
+
+				lw $s0, 0($sp)
+				lb $s1, -4($sp)
+				lb $s2, -8($sp)
+				lb $s3, -12($sp)
+				lw $ra, -16($sp)
+				addi $sp, $sp, 20
+
+				add $s3, $s3, $v0 # Collect the total number of stones to add to mancala
+
+				# move $a0, $s3
+				# li $v0, 1
+				# syscall
+
+				# li $v0, 0
+				bnez $v0, set_p_only_top
+				j cont_loop_only_top
+
+				set_p_only_top:
+					addi $sp, $sp, -20
+					sw $s0, 0($sp)
+					sb $s1, -4($sp)
+					sb $s2, -8($sp)
+					sb $s3, -12($sp)
+					sw $ra, -16($sp)
+
+					move $a0, $s0
+					li $a1, 'B'
+					move $a2, $s1
+					move $a3, $0
+					jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
+
+					lw $s0, 0($sp)
+					lb $s1, -4($sp)
+					lb $s2, -8($sp)
+					lb $s3, -12($sp)
+					lw $ra, -16($sp)
+					addi $sp, $sp, 20
+
+				cont_loop_only_top:
+					addi $s1, $s1, 1 # Go to the next index
+					j loop_only_top_cr
+
+			exit_loop_only_top_cr:
+				addi $sp, $sp, -16
+				sw $s0, 0($sp)
+				sb $s1, -4($sp)
+				sb $s2, -8($sp)
+				# sb $s3, -12($sp)
+				sw $ra, -12($sp)
+
+				move $a0, $s0
+				li $a1, 'B'
+				move $a2, $s3
+				jal collect_stones # Uses $s0 = *state, $s1 = player, $s2 = stones
+
+				lw $s0, 0($sp)
+				lb $s1, -4($sp)
+				lb $s2, -8($sp)
+				# lb $s3, -12($sp)
+				lw $ra, -12($sp)
+				addi $sp, $sp, 16
+
+				li $v0, 1
+				j none_empty_cr
+		only_bot_empty_cr:
+			# Move all stones from top_pockets to top_mancala
+			li $s1, 0
+			lb $s2, 2($s0)
+			li $s3, 0
+			loop_only_bot_cr:
+				beq $s1, $s2, exit_loop_only_bot_cr
+
+				addi $sp, $sp, -20
+				sw $s0, 0($sp)
+				sb $s1, -4($sp)
+				sb $s2, -8($sp)
+				sb $s3, -12($sp)
+				sw $ra, -16($sp)
+
+				move $a0, $s0
+				li $a1, 'T'
+				move $a2, $s1
+				jal get_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
+
+				lw $s0, 0($sp)
+				lb $s1, -4($sp)
+				lb $s2, -8($sp)
+				lb $s3, -12($sp)
+				lw $ra, -16($sp)
+				addi $sp, $sp, 20
+
+				add $s3, $s3, $v0 # Collect the total number of stones to add to mancala
+
+				# move $a0, $s1
+				# li $v0, 1
+				# syscall
+
+				bnez $v0, set_p_only_bot
+				j cont_loop_only_bot
+
+				set_p_only_bot:
+					addi $sp, $sp, -20
+					sw $s0, 0($sp)
+					sb $s1, -4($sp)
+					sb $s2, -8($sp)
+					sb $s3, -12($sp)
+					sw $ra, -16($sp)
+
+					move $a0, $s0
+					li $a1, 'T'
+					move $a2, $s1
+					move $a3, $0
+					jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
+
+					lw $s0, 0($sp)
+					lb $s1, -4($sp)
+					lb $s2, -8($sp)
+					lb $s3, -12($sp)
+					lw $ra, -16($sp)
+					addi $sp, $sp, 20
+
+				cont_loop_only_bot:
+					addi $s1, $s1, 1 # Go to the next index
+					j loop_only_bot_cr
+
+			exit_loop_only_bot_cr:
+				addi $sp, $sp, -16
+				sw $s0, 0($sp)
+				sb $s1, -4($sp)
+				sb $s2, -8($sp)
+				# sb $s3, -12($sp)
+				sw $ra, -12($sp)
+
+				move $a0, $s0
+				li $a1, 'T'
+				move $a2, $s3
+				jal collect_stones # Uses $s0 = *state, $s1 = player, $s2 = stones
+
+				lw $s0, 0($sp)
+				lb $s1, -4($sp)
+				lb $s2, -8($sp)
+				# lb $s3, -12($sp)
+				lw $ra, -12($sp)
+				addi $sp, $sp, 16
+				
+				li $v0, 1
+				j none_empty_cr
+	both_empty_cr:
+		li $v0, 1
+		j none_empty_cr
+	none_empty_cr:
+		lb $t0, 0($s0) # Player 1's mancala
+		lb $t1, 1($s0) # Player 2's mancala
+		bgt $t0, $t1, gt_cr # bot_player > top_player
+		blt $t0, $t1, lt_cr # top > bot
+		li $v1, 0 # top == bot
+		jr $ra
+		gt_cr:
+			li $v1, 1
+			jr $ra
+		lt_cr:
+			li $v1, 2
+			jr $ra
 load_moves:
 	jr $ra
 play_game:
