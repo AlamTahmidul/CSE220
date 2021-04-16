@@ -449,24 +449,24 @@ verify_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = distance
 	vm_err_noStones:
 		li $v0, 0
 		jr $ra
-execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3 = num of stones, $s4 = current iteration, $s5 = Flag, $s6 = player
+execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3 = num of stones, $s4 = current iteration, $s5 = Number of stones added to player's mancala, $s6 = player
 	# int, int execute_move(GameState* state, byte origin_pocket)
 	move $s0, $a0
 	move $s1, $a1  
 
 	lb $s2, 5($s0) # Get the current player
 	li $t1, 'B'
-	beq $s2, $t1, move_player_B	# Bottom player moves
+	beq $s2, $t1, move_player_em # Bottom player moves
 	li $t1, 'T'
-	beq $s2, $t1, move_player_T # Top player moves
+	beq $s2, $t1, move_player_em # Top player moves
 
-	move_player_B:
+	move_player_em:
 		# Implement how the bottom player moves
 		# Increment mancala of bottom player if current player is bottom
 		# 	Otherwise, skip it
 
 		addi $sp, $sp, -24
-		sb $s0, 0($sp)
+		sw $s0, 0($sp)
 		sb $s1, -4($sp)
 		sb $s2, -8($sp)
 		sb $s3, -12($sp)
@@ -476,9 +476,9 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 		move $a0, $s0
 		move $a1, $s2
 		move $a2, $s1
-		jal get_pocket # Get num of stones in the pocket; Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
+		jal get_pocket # Get num of stones in the pocket for the player; Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
 		
-		lb $s0, 0($sp)
+		lw $s0, 0($sp)
 		lb $s1, -4($sp)
 		lb $s2, -8($sp)
 		lb $s3, -12($sp)
@@ -488,42 +488,47 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 		move $s3, $v0 # Store the number of stones to iterate through
 
 		# Set the number of stones in the current pocket to 0 (Basically, pick up all the stones)
-			addi $sp, $sp, -28
-			sb $s0, 0($sp)
-			sb $s1, -4($sp)
-			sb $s2, -8($sp)
-			sb $s3, -12($sp)
-			sb $s4, -16($sp)
-			sb $s5, -20($sp)
-			sw $ra, -24($sp)
+		addi $sp, $sp, -28
+		sw $s0, 0($sp)
+		sb $s1, -4($sp)
+		sb $s2, -8($sp)
+		sb $s3, -12($sp)
+		sb $s4, -16($sp)
+		sb $s5, -20($sp)
+		sw $ra, -24($sp)
 
-			move $a0, $s0 # *state
-			move $a1, $s2 # player
-			move $a2, $s1 # distance
-			move $a3, $0 # size
-			jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
+		move $a0, $s0 # *state
+		move $a1, $s2 # player
+		move $a2, $s1 # distance
+		move $a3, $0 # size
+		jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
 
-			lb $s0, 0($sp)
-			lb $s1, -4($sp)
-			lb $s2, -8($sp)
-			lb $s3, -12($sp)
-			lb $s4, -16($sp)
-			lb $s5, -20($sp)
-			lw $ra, -24($sp)
-			addi $sp, $sp, 28
-
+		lw $s0, 0($sp)
+		lb $s1, -4($sp)
+		lb $s2, -8($sp)
+		lb $s3, -12($sp)
+		lb $s4, -16($sp)
+		lb $s5, -20($sp)
+		lw $ra, -24($sp)
+		addi $sp, $sp, 28
+		
 		move $s6, $s2 # get a copy of the current player
 		li $s4, 0 # Total number of stones added
-		li $s5, 1 # Flag for bottom movement and top movement
-		addi $s1, $s1, -1 # Go to the next pocket
-		loop_player_B_em:
+		li $s5, 0 # Number of stones added to current player's mancala
+		# addi $s1, $s1, -1 # Go to the next pocket
+		
+		loop_player_em:
+		# 									move $a0, $s4
+		# li $v0, 1
+		# syscall
 			beq $s4, $s3, exit_loop_em # Filled all the stones
-			bltz $s1, iterate_like_T # If index is negative, then toggle flag and check mancala
+			addi $s1, $s1, -1 # Go to the next pocket (Counter-clockwise)
+			bltz $s1, iterate_like_T # If index is negative, then check mancala
 			j after_iterate_like_T
 
 			after_iterate_like_T:
 				addi $sp, $sp, -24
-				sb $s0, 0($sp)
+				sw $s0, 0($sp)
 				sb $s1, -4($sp)
 				sb $s2, -8($sp)
 				sb $s3, -12($sp)
@@ -535,7 +540,7 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				move $a2, $s1 # distance
 				jal get_pocket # Get num of stones in the pocket; Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
 
-				lb $s0, 0($sp)
+				lw $s0, 0($sp)
 				lb $s1, -4($sp)
 				lb $s2, -8($sp)
 				lb $s3, -12($sp)
@@ -547,7 +552,7 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				addi $t0, $t0, 1 # Increase stone by 1
 				
 				addi $sp, $sp, -28
-				sb $s0, 0($sp)
+				sw $s0, 0($sp)
 				sb $s1, -4($sp)
 				sb $s2, -8($sp)
 				sb $s3, -12($sp)
@@ -561,7 +566,7 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				move $a3, $t0 # size
 				jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
 
-				lb $s0, 0($sp)
+				lw $s0, 0($sp)
 				lb $s1, -4($sp)
 				lb $s2, -8($sp)
 				lb $s3, -12($sp)
@@ -570,31 +575,109 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				lw $ra, -24($sp)
 				addi $sp, $sp, 28
 				
-				addi $s1, $s1, -1 # Go to the next pocket (Counter-clockwise)
+				# beq $s4, $s3, exit_loop_em # Filled all the stones
+				addi $s4, $s4, 1 # Increment total number of stones added
+				# addi $s1, $s1, -1 # Go to the next pocket (Counter-clockwise)
 				
-				j loop_player_B_em # Same procedure: Get the pocket and increment the pocket by 1
+				j loop_player_em # Same procedure: Get the pocket and increment the pocket by 1
 			
-			iterate_like_T: # Flag == 0, move like T otherwise move like B
-				# Check if mancala if player's
-				# If player's, then add to mancala. Else ignore
-				# Then change the index depending on the condition
-				beqz $s5, player_mancala_em
+			iterate_like_T:
+		# 										move $a0, $s5
+		# li $v0, 1
+		# syscall
 
-				li $s5, 1 # Switch flag to 1 (meaning move from top pockets)
-				j after_iterate_like_T
-				player_mancala_em: # Add stone to player's mancala
-					# 
-					li $s6, 'T'
-					j after_iterate_like_T
+				beq $s6, $s2, add_to_mancala_em # If the relative player ($s6) matches the argument player ($s2) then add 1 to mancala
+				j change_index # Otherwise, change the index (ignore mancala)
+
+				change_index:
+					li $t0, 'T'
+					beq $t0, $s6, change_to_B_em
+					li $t0, 'B'
+					beq $t0, $s6, change_to_T_em
+					change_to_B_em:
+						li $s6, 'B'
+						j continue_change_em
+					change_to_T_em:
+						li $s6, 'T'
+						j continue_change_em
+					continue_change_em:
+						lb $s1, 2($s0) # Get the number of pockets
+						addi $s1, $s1, -1 # num_of_pockets - 1 = last index
+						j loop_player_em
+
+				add_to_mancala_em: # Add stone to player's mancala
+					addi $sp, $sp, -16
+					sw $s0, 0($sp)
+					sb $s1, -4($sp)
+					sb $s2, -8($sp)
+					sw $ra, -12($sp)
+
+					move $a0, $s0
+					move $a1, $s6
+					li $a2, 1
+					jal collect_stones # Uses $s0 = *state, $s1 = player, $s2 = stones
+
+					lw $s0, 0($sp)
+					lb $s1, -4($sp)
+					lb $s2, -8($sp)
+					lw $ra, -12($sp)
+					addi $sp, $sp, 16
 					
-	move_player_T:
-		# Implement how the top player moves
-		# Start from i and move counter-clockwise
-		addToA_mancala_execute_move:
-			# Adds Mancala to A
+					addi $s5, $s5, 1 # The output (number of stones added to mancala)
+					addi $s4, $s4, 1 # Increment total number of stones added
+					j change_index
+			
 	exit_loop_em:
-
+		lb $t0, 2($s0)
+		addi $t0, $t0, -1
+		seq $t1, $s1, $t0 # current_index == last index of the pockets
+		sne $t2, $s6, $s2 # If 1 then not equal
+		and $t1, $t1, $t2 # if last deposit was in the Mancala
+		bgtz $t1, last_dep_mancala
+		beq $s6, $s2, check_empty_bef_dep
+		move $v0, $s5
+		li $v1, 0 # Deposit was somewhere else
 		jr $ra
+		last_dep_mancala:
+			move $v0, $s5
+			li $v1, 2
+			jr $ra
+		check_empty_bef_dep:
+			addi $sp, $sp, -24
+			sw $s0, 0($sp)
+			sb $s1, -4($sp)
+			sb $s2, -8($sp)
+			sb $s3, -12($sp)
+			sb $s4, -16($sp)
+			sw $ra, -20($sp)
+		# 					move $a0, $s1
+		# li $v0, 1
+		# syscall
+		# j end
+			move $a0, $s0
+			move $a1, $s6
+			move $a2, $s1
+			jal get_pocket # Get num of stones in the pocket; Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
+			move $t0, $v0 # Get the number of stones
+
+			lw $s0, 0($sp)
+			lb $s1, -4($sp)
+			lb $s2, -8($sp)
+			lb $s3, -12($sp)
+			lb $s4, -16($sp)
+			lw $ra, -20($sp)
+			addi $sp, $sp, 24
+
+			li $t1, 1
+			beq $t0, $t1, original_empty # If the number of stones is 1, then the slot was originally empty
+			li $v1, 0
+			j ret_check_empty_bef_dep
+			original_empty:
+				li $v1, 1
+				j ret_check_empty_bef_dep
+			ret_check_empty_bef_dep:
+				move $v0, $s5
+				jr $ra
 steal:
 	jr $ra
 check_row:
