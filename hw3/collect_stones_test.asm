@@ -1,6 +1,6 @@
 .data
-player: .byte 'T' 
-stones: .word -10
+player: .byte 'B' 
+stones: .word 54
 .align 2
 state:        
     .byte 4         # bot_mancala       	(byte #0)
@@ -24,8 +24,8 @@ move $a0, $v0
 li $v0, 1
 syscall
 
-# la $a0, state
-# jal print_board
+la $a0, state
+jal print_board
 
 li $v0, 10
 syscall

@@ -34,6 +34,22 @@ move $a0, $s1
 li $v0, 1
 syscall
 
+li $a0, '\n'
+li $v0, 11
+syscall
+
+la $a0, state
+jal print_board
+
+li $a0, '\n'
+li $v0, 11
+syscall
+
+la $s0, state
+lb $a0, 5($s0)
+li $v0, 11
+syscall
+
 li $v0, 10
 syscall
 
