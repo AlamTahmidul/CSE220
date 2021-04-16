@@ -1177,8 +1177,162 @@ print_board: # Uses $s0 = *state
 		syscall
 
 	jr $ra
-write_board:
-	jr $ra
+write_board: # Uses $s0 = *state, $s1 = address of heap memory, $s2 = iteration, $s3 = max. itereations, $s6 = file descriptor
+	# int write_board(GameState* state)
+	move $s0, $a0
+
+	li $a0, 11
+	li $v0, 9
+	syscall
+
+	move $s1, $v0 # Address of heap memory
+	li $t0, 'o'
+	sb $t0, 0($s1)
+	li $t0, 'u'
+	sb $t0, 1($s1)
+	li $t0, 't'
+	sb $t0, 2($s1)
+	li $t0, 'p'
+	sb $t0, 3($s1)
+	li $t0, 'u'
+	sb $t0, 4($s1)
+	li $t0, 't'
+	sb $t0, 5($s1)
+	li $t0, '.'
+	sb $t0, 6($s1)
+	li $t0, 't'
+	sb $t0, 7($s1)
+	li $t0, 'x'
+	sb $t0, 8($s1)
+	li $t0, 't'
+	sb $t0, 9($s1)
+
+	move $t0, $s1
+
+	li $v0, 13
+	move $a0, $t0 # output_file_name
+	li $a1, 9 # write-only with create and append
+	li $a2, 0 # Ignore mode
+	syscall # Open file
+	move $s6, $v0 # $s6 has file descriptor
+	bltz $s6, file_err_wb
+
+	li $v0, 15
+	move $a0, $s6 # File Descriptor
+	
+	move $t0, $s1
+	addi $t0, $t0, 11
+	lb $t1, 6($s0)
+	sb $t1, 0($t0)
+
+	move $a1, $t0 # Address of buffer to write
+	li $a2, 1 # Buffer Length
+	syscall # Write the first digit of the top_mancala
+
+	li $v0, 15
+	move $a0, $s6
+	move $t0, $s1
+	addi $t0, $t0, 11
+	lb $t1, 7($s0)
+	sb $t1, 0($t0)
+
+	move $a1, $t0 # Address of buffer to write
+	li $a2, 1 # Buffer Length
+	syscall # 2nd digit of the top_mancala
+	
+	li $v0, 15
+	move $a0, $s6
+	move $t0, $s1
+	addi $t0, $t0, 11
+	li $t1, '\n'
+	sb $t1, 0($t0)
+
+	move $a1, $t0 # Address of buffer to write
+	li $a2, 1 # Buffer Length
+	syscall # 2nd digit of the top_mancala
+
+	move $t0, $s0
+	addi $t0, $t0, 8 # Go to the top pocket
+	li $s2, 0 # Index counter
+	lb $s3, 2($s0) # max iterations
+	sll $s3, $s3, 1 # Multiply by 2
+	li $t3, 0 # Player 1
+	li $t4, 2 # Max. of 2 players
+
+	# Write to file
+	write_board_loop:
+		beq $t3, $t4, exit_loop_wb
+		beq $s2, $s3, next_row_wb # If reached the end of the row
+
+		li $v0, 15
+		move $a0, $s6
+		move $t6, $s1 # Copy heap_alloc addr
+		addi $t6, $t6, 11 # Go to the last spot
+		lb $t1, 0($t0) # Get the character to print to file
+		sb $t1, 0($t6) # Store the character in the addr
+
+		move $a1, $t6 # Address of buffer to write
+		li $a2, 1 # Buffer Length
+		syscall
+
+		addi $s2, $s2, 1 # Increase the counter
+		addi $t0, $t0, 1 # Get next character
+		j write_board_loop
+
+		next_row_wb:
+			li $v0, 15
+			move $a0, $s6
+			move $t6, $s1 # Copy heap_alloc addr
+			addi $t6, $t6, 11 # Go to the last spot
+			li $t1, '\n'
+			sb $t1, 0($t6) # Store the character in the addr
+
+			move $a1, $t6 # Address of buffer to write
+			li $a2, 1 # Buffer Length
+			syscall
+		
+			addi $t3, $t3, 1 # Increase counter for row
+			# move $t0, $s3 # Go to the last index of the bot_mancala
+			li $s2, 0 # Reset counter
+			j write_board_loop
+	exit_loop_wb:
+		# TODO: ADD the last 2 digits of the bot mancala
+		li $v0, 15
+		move $a0, $s6
+		move $t6, $s1 # Copy heap_alloc addr
+		addi $t6, $t6, 11 # Go to the last spot
+		lb $t1, 0($t0) # Get the character to print to file
+		sb $t1, 0($t6) # Store the character in the addr
+
+		move $a1, $t6 # Address of buffer to write
+		li $a2, 1 # Buffer Length
+		syscall
+
+		addi $t0, $t0, 1
+		
+		li $v0, 15
+		move $a0, $s6
+		move $t6, $s1 # Copy heap_alloc addr
+		addi $t6, $t6, 11 # Go to the last spot
+		lb $t1, 0($t0) # Get the character to print to file
+		sb $t1, 0($t6) # Store the character in the addr
+
+		move $a1, $t6 # Address of buffer to write
+		li $a2, 1 # Buffer Length
+		syscall
+
+
+		li $v0, 16 # Close file
+		move $a0, $s6 # File descriptor to close
+		syscall # Close Completely
+
+		addi $s1, $s1, -11 # Deallocate heap memory
+
+		li $v0, 1
+		jr $ra
+		file_err_wb:
+			li $v0, -1
+			jr $ra
 end:
 	li $v0, 10
 	syscall

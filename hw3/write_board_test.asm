@@ -15,6 +15,9 @@ state:
 main:
 la $a0, state
 jal write_board
+
+la $a0, state
+jal print_board
 # You must write your own code here to check the correctness of the function implementation.
 
 li $v0, 10
