@@ -1114,8 +1114,179 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 		lt_cr:
 			li $v1, 2
 			jr $ra
-load_moves:
-	jr $ra
+load_moves: # Uses $s0 = moves, $s1 = filename, $s2 = file descriptor, $s3 = input buffer, $s4 = columns, $s5 = rows, $s6 = total number of moves, $s7 = copy of moves[] address
+	# int load_moves(byte[] moves, string filename)
+	move $s0, $a0 # Address of moves[]
+	move $s1, $a1
+	move $s7, $s0 # Copy of addr of moves[]
+
+	move $a0, $s1 # $a0 = filename address
+	li $a1, 0  # $a1 = flag (Read-only)
+	li $a2, 0 # Ignore mode
+	li $v0, 13 # Open file
+	syscall
+	blez $v0, file_not_found_lm # $v0, $v1 = -1 (File does not exist)
+	move $s2, $v0 # $s2 has file descriptor
+
+	li $t9, 0 # FLAG TO SKIP AFTER FIRST DIGIT (if 1 then skip)
+	li $s3, 0 # Number of moves added
+	li $t4, 0 # Make the number
+	li $t5, 0 # Layout_counter (rows)
+	li $t6, 0 # Row Counter
+	li $t7, 0 # Column Counter
+	li $s4, 0 # Total Rows
+	li $s5, 0 # Total Columns
+	loop_lm:
+		li $t1, 1
+		ble $t5, $t1, ignore_lm	# if $t5 <= $t1 then ignore_lm
+			# 						move $a0, $s4
+			# li $v0, 1
+			# syscall
+			# j end
+		beq $t6, $s4, exit_loop_lm
+		beq $t7, $s5, next_row_loop_lm
+		ignore_lm:
+
+		addi $sp, $sp, -4 # allocate sp to hold 1 character
+		li $v0, 14 # Read file
+		move $a0, $s2 # File descriptor
+		move $a1, $sp # File Buffer
+		li $a2, 1 # Read 1 character at a time
+		syscall # Put the character in the stack pointer
+		
+		lw $t0, 0($sp) # $t0 holds the digit in ascii
+		beqz $v0, exit_loop_em
+		# move $a0, $t0
+		# li $v0, 1
+		# syscall
+		addi $sp, $sp, 4 # Deallocate before doing anything else
+		bnez $t9, flag_toggle_lm
+		j ignore_flag_lm
+		flag_toggle_lm: # Skip the next digit
+			li $t9, 0
+			j loop_lm
+		ignore_flag_lm:
+		li $t1, '\r'
+		beq $t1, $t0, loop_lm # Ignore '\r'
+		li $t1, '\n'  # \n = Go to next row
+		beq $t1, $t0, next_row_inFile_lm
+
+		beqz $t5, get_columns_lm # First row in file
+		li $t1, 1
+		beq $t5, $t1, get_rows_lm # Second row in file
+		
+		# This is the 3rd row
+		# if column_counter % 2 == 0 -> First-digit otherwise second-digit
+		li $t1, 2
+		div		$t7, $t1			# $t7 / $t1
+		mfhi	$t2					# $t3 = $t0 mod $t1
+		beqz $t2, first_digit_lm
+		# Otherwise, Second digit
+		li $t1, '0'
+		sge $t1, $t0, $t1 # if digit >= '0'
+		li $t2, '9'
+		sle $t2, $t0, $t2 # if digit <= '9'
+		and $t1, $t1, $t2 # if digit >= '0' and digit <= '9'
+		beqz $t1, set_invalid2_lm # Invalid move
+		
+		# Assume valid digit
+		li $t1, 10
+		mul $t4, $t4, $t1
+		li $t1, '0'
+		sub $t0, $t0, $t1 # Get the real value
+		add $t4, $t4, $t0
+		# $t4 has the properly formatted number
+		sb $t4, 0($s7) # Store in the moves array
+			# move $a0, $s7
+			# li $v0, 1
+			# syscall
+			# li $a0, '\n'
+			# li $v0, 11
+			# syscall
+		addi $s7, $s7, -1 # Go to the next spot in the array
+		addi $s3, $s3, 1 # Increment number of moves added
+		j continue_loop_lm
+		first_digit_lm:
+			li $t1, '0'
+			sge $t1, $t0, $t1 # if digit >= '0'
+			li $t2, '9'
+			sle $t2, $t0, $t2 # if digit <= '9'
+			and $t1, $t1, $t2 # if digit >= '0' and digit <= '9'
+			beqz $t1, set_invalid_lm # Invalid move
+			li $t1, '0'
+			sub $t4, $t0, $t1 # Get the real value and store the first digit in $t4
+			j continue_loop_lm
+			set_invalid_lm:
+				li $t1, -1
+				sb $t1, 0($s7) # Store as -1 for invalid
+				addi $s7, $s7, -1 # Go to the next spot in the moves[] array
+				# TODO: ADD FLAG
+				li $t9, 1
+				addi $t7, $t7, 2 # Go to the next column (+2 characters over)
+				li $t4, 0
+				addi $s3, $s3, 1 # Increment number of moves added
+				j loop_lm
+			set_invalid2_lm:
+				li $t1, -1
+				sb $t1, 0($s7) # Store as -1 for invalid
+				addi $s7, $s7, -1 # Go to the next spot in the moves[] array
+				addi $t7, $t7, 1 # Go to the next column (+1 characters over)
+				li $t4, 0 # Reset number maker
+				addi $s3, $s3, 1 # Increment number of moves added
+				j loop_lm
+		continue_loop_lm:
+			addi $t7, $t7, 1  # Increase column counter
+			j loop_lm
+		next_row_loop_lm:
+			addi $t6, $t6, 1 # Increase row counter by 1
+			# Add 99 to moves array and incrememnt total moves by 1
+			li $t1, 99
+			sb $t1, 0($s7)
+			addi $s7, $s7, -1
+			addi $s3, $s3, 1
+			li $t7, 0 # Reset column counter to 0
+			j loop_lm
+		get_columns_lm:
+			li $t1, 10
+			mul $t4, $t4, $t1 # Multiply current sum by 10
+			li $t1, '0'
+			sub $t0, $t0, $t1 # Subtract by '0' to get the "REAL" Value
+			add $t4, $t4, $t0 # sum += digit
+			j loop_lm
+		get_rows_lm:
+			li $t1, 10
+			mul $t4, $t4, $t1 # Multiply current sum by 10
+			li $t1, '0'
+			sub $t0, $t0, $t1 # Subtract by '0' to get the "REAL" Value
+			add $t4, $t4, $t0 # sum += digit
+			# move $a0, $t0
+			# li $v0, 1
+			# syscall
+			# j end
+			j loop_lm
+		next_row_inFile_lm:
+			beqz $t5, set_columns_lm
+			li $t0, 1
+			beq $t5, $t0, set_rows_lm
+			set_columns_lm:
+				move $s5, $t4
+				sll $s5, $s5, 1 # Multiply by 2 to iterate over characters
+				j c_next_row_inFile
+			set_rows_lm:
+				move $s4, $t4
+				j c_next_row_inFile
+			c_next_row_inFile:
+				addi $t5, $t5, 1
+				li $t4, 0 # Reset number maker
+				j loop_lm
+	exit_loop_lm:
+		# Exited the loop. Do stuff here?
+		addi $s3, $s3, -1
+		move $v0, $s3
+		jr $ra
+	file_not_found_lm:
+		li $v0, -1
+		jr $ra
 play_game:
 	jr  $ra
 print_board: # Uses $s0 = *state

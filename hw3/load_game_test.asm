@@ -22,24 +22,6 @@ la $a0, state
 la $a1, board_filename
 jal load_game
 # You must write your own code here to check the correctness of the function implementation.
-# la $s0, state
-# addi $s0, $s0, 6
-
-# lb $a0, 0($s0)
-# li $v0, 1
-# syscall
-
-# lbu $a0, 1($s0)
-# li $v0, 1
-# syscall
-
-# lbu $a0, 26($s0)
-# li $v0, 1
-# syscall
-
-# lbu $a0, 27($s0)
-# li $v0, 1
-# syscall
 
 move $s0, $v0
 move $s1, $v1
@@ -51,6 +33,9 @@ syscall
 move $a0, $s1
 li $v0, 1
 syscall
+
+# la $a0, state
+# jal print_board
 
 li $v0, 10
 syscall
