@@ -746,13 +746,135 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				ret_check_empty_bef_dep:
 					move $v0, $s5
 					jr $ra
-steal: # Uses $s0 = *state, $s1 = destination_pocket
+steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number of stones
 	# int steal(GameState* state, byte destination_pocket)
 	move $s0, $a0
 	move $s1, $a1
+	li $s3, 0
 
+	lb $t1, 5($s0)
+	li $t0, 'B'
+	beq $t0, $t1, changeToT_steal
+	li $t0, 'T'
+	beq $t0, $t1, changeToB_steal
+	changeToB_steal:
+		li $s2, 'B'
+		j after_swap_steal
+	changeToT_steal:
+		li $s2, 'T'
+		j after_swap_steal
+	after_swap_steal:
+	# Get the number of stones in the destination_pocket
+		addi $sp, $sp, -20
+		sw $s0, 0($sp)
+		sb $s1, -4($sp)
+		sb $s2, -8($sp)
+		sb $s3, -12($sp)
+		sw $ra, -16($sp)
+
+		move $a0, $s0 # *state
+		move $a1, $s2 # player
+		move $a2, $s1 # distnace
+		jal get_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
+
+		lw $s0, 0($sp)
+		lb $s1, -4($sp)
+		lb $s2, -8($sp)
+		lb $s3, -12($sp)
+		lw $ra, -16($sp)
+		addi $sp, $sp, 20
+
+		add $s3, $s3, $v0
+	# Set the number of stones in the destination_pocket to 0
+		addi $sp, $sp, -20
+		sw $s0, 0($sp)
+		sb $s1, -4($sp)
+		sb $s2, -8($sp)
+		sb $s3, -12($sp)
+		sw $ra, -16($sp)
+
+		move $a0, $s0
+		move $a1, $s2
+		move $a2, $s1
+		li $a3, 0
+		jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
+	
+		lw $s0, 0($sp)
+		lb $s1, -4($sp)
+		lb $s2, -8($sp)
+		lb $s3, -12($sp)
+		lw $ra, -16($sp)
+		addi $sp, $sp, 20
+
+	# Get the number of stones in the opposite of the destination_pocket (n - i - 1)
+		addi $sp, $sp, -20
+		sw $s0, 0($sp)
+		sb $s1, -4($sp)
+		sb $s2, -8($sp)
+		sb $s3, -12($sp)
+		sw $ra, -16($sp)
+
+		lb $t0, 2($s0) # n
+		addi $t0, $t0, -1 # n - 1
+		sub		$t0, $t0, $s1		# $t0 = $t0 - $s1; n - i - 1 =  n - 1 - i
+		
+		move $a0, $s0
+		lb $a1, 5($s0)
+		move $a2, $t0
+		jal get_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
+
+		lw $s0, 0($sp)
+		lb $s1, -4($sp)
+		lb $s2, -8($sp)
+		lb $s3, -12($sp)
+		lw $ra, -16($sp)
+		addi $sp, $sp, 20
+		
+		add $s3, $s3, $v0 # Increment the total number of stones
+	# Set the number of stones in the opposite of the destination_pocket to 0
+		addi $sp, $sp, -20
+		sw $s0, 0($sp)
+		sb $s1, -4($sp)
+		sb $s2, -8($sp)
+		sb $s3, -12($sp)
+		sw $ra, -16($sp)
+	
+		lb $t0, 2($s0) # n
+		addi $t0, $t0, -1 # n - 1
+		sub		$t0, $t0, $s1		# $t0 = $t0 - $s1; n - i - 1 =  n - 1 - i
+
+		move $a0, $s0
+		lb $a1, 5($s0)
+		move $a2, $t0
+		li $a3, 0
+		jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
+
+		lw $s0, 0($sp)
+		lb $s1, -4($sp)
+		lb $s2, -8($sp)
+		lb $s3, -12($sp)
+		lw $ra, -16($sp)
+		addi $sp, $sp, 20
+	
+	addi $sp, $sp, -16
+	sw $s0, 0($sp)
+	sb $s1, -4($sp)
+	sb $s2, -8($sp)
+	sw $ra, -12($sp)
+
+	move $a0, $s0
+	move $a1, $s2
+	move $a2, $s3
+	jal collect_stones # Uses $s0 = *state, $s1 = player, $s2 = stones
+
+	lw $s0, 0($sp)
+	lb $s1, -4($sp)
+	lb $s2, -8($sp)
+	lw $ra, -12($sp)
+	addi $sp, $sp, 16
 
 	# $v0 = number of stones added to player's mancala
+	move $v0, $s3
 	jr $ra
 check_row:
 	jr $ra
