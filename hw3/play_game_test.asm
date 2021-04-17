@@ -1,7 +1,7 @@
 .data
-moves_filename: .asciiz "moves01.txt"
-board_filename: .asciiz "game01.txt"
-num_moves_to_execute: .word 10
+moves_filename: .asciiz "C:\\Users\\tamin\\Documents\\GitHub\\CSE220\\hw3\\moves02.txt"
+board_filename: .asciiz "C:\\Users\\tamin\\Documents\\GitHub\\CSE220\\hw3\\game01.txt"
+num_moves_to_execute: .word 17
 moves: .byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 .align 2
 state:        
@@ -27,6 +27,23 @@ sw $t0, 0($sp)
 jal play_game
 addi $sp, $sp, 4
 # You must write your own code here to check the correctness of the function implementation.
+move $s0, $v0
+move $s1, $v1
+
+move $a0, $s0
+li $v0, 1
+syscall
+
+li $a0, '\n'
+li $v0, 11
+syscall
+
+move $a0, $s1
+li $v0, 1
+syscall
+
+la $a0, state
+jal print_board
 
 li $v0, 10
 syscall

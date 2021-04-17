@@ -23,6 +23,9 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 	# li $v0, 10
 	# syscall
 
+	# move $t0, $sp 
+	# addi $sp, $sp, -4
+	# sw $t0, 0($sp)
 	# Open File
 	move $a0, $a1 # $a0 = filename adress
 	li $a1, 0  # $a1 = flag (Read-only)
@@ -191,6 +194,8 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 			bgt $t0, $t1, ex_pockets_lg # pockets > 98 then extra pockets
 			move $v1, $t0 # Normal num. of pockets
 		return_lg:
+			# lw $sp, 0($sp)
+			# addi $sp, $sp, 4
 			jr $ra
 		ex_stones_lg:
 			move $v0, $0
@@ -203,6 +208,8 @@ load_game: # Uses $s0 = *state, $s1 = filename, $s2 = file descriptor, $s3 = add
 		li $t0, -1
 		move $v0, $t0
 		move $v1, $t0
+		lw $sp, 0($sp)
+		addi $sp, $sp, 4
 		jr $ra
 get_pocket: # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = Num. of pockets, $s4 = Position
 	# int get_pocket(GameState* state, byte player, byte distance)
@@ -490,11 +497,11 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 
 		addi $sp, $sp, -24
 		sw $s0, 0($sp)
-		sb $s1, -4($sp)
-		sb $s2, -8($sp)
-		sb $s3, -12($sp)
-		sb $s4, -16($sp)
-		sw $ra, -20($sp)
+		sb $s1, 4($sp)
+		sb $s2, 8($sp)
+		sb $s3, 12($sp)
+		sb $s4, 16($sp)
+		sw $ra, 20($sp)
 
 		move $a0, $s0
 		move $a1, $s2
@@ -502,23 +509,23 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 		jal get_pocket # Get num of stones in the pocket for the player; Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
 		
 		lw $s0, 0($sp)
-		lb $s1, -4($sp)
-		lb $s2, -8($sp)
-		lb $s3, -12($sp)
-		lb $s4, -16($sp)
-		lw $ra, -20($sp)
+		lb $s1, 4($sp)
+		lb $s2, 8($sp)
+		lb $s3, 12($sp)
+		lb $s4, 16($sp)
+		lw $ra, 20($sp)
 		addi $sp, $sp, 24
 		move $s3, $v0 # Store the number of stones to iterate through
 
 		# Set the number of stones in the current pocket to 0 (Basically, pick up all the stones)
 		addi $sp, $sp, -28
 		sw $s0, 0($sp)
-		sb $s1, -4($sp)
-		sb $s2, -8($sp)
-		sb $s3, -12($sp)
-		sb $s4, -16($sp)
-		sb $s5, -20($sp)
-		sw $ra, -24($sp)
+		sb $s1, 4($sp)
+		sb $s2, 8($sp)
+		sb $s3, 12($sp)
+		sb $s4, 16($sp)
+		sb $s5, 20($sp)
+		sw $ra, 24($sp)
 
 		move $a0, $s0 # *state
 		move $a1, $s2 # player
@@ -527,12 +534,12 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 		jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
 
 		lw $s0, 0($sp)
-		lb $s1, -4($sp)
-		lb $s2, -8($sp)
-		lb $s3, -12($sp)
-		lb $s4, -16($sp)
-		lb $s5, -20($sp)
-		lw $ra, -24($sp)
+		lb $s1, 4($sp)
+		lb $s2, 8($sp)
+		lb $s3, 12($sp)
+		lb $s4, 16($sp)
+		lb $s5, 20($sp)
+		lw $ra, 24($sp)
 		addi $sp, $sp, 28
 		
 		move $s6, $s2 # get a copy of the current player
@@ -552,11 +559,11 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 			after_iterate_like_T:
 				addi $sp, $sp, -24
 				sw $s0, 0($sp)
-				sb $s1, -4($sp)
-				sb $s2, -8($sp)
-				sb $s3, -12($sp)
-				sb $s4, -16($sp)
-				sw $ra, -20($sp)
+				sb $s1, 4($sp)
+				sb $s2, 8($sp)
+				sb $s3, 12($sp)
+				sb $s4, 16($sp)
+				sw $ra, 20($sp)
 
 				move $a0, $s0 # *state
 				move $a1, $s6 # player
@@ -564,11 +571,11 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				jal get_pocket # Get num of stones in the pocket; Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
 
 				lw $s0, 0($sp)
-				lb $s1, -4($sp)
-				lb $s2, -8($sp)
-				lb $s3, -12($sp)
-				lb $s4, -16($sp)
-				lw $ra, -20($sp)
+				lb $s1, 4($sp)
+				lb $s2, 8($sp)
+				lb $s3, 12($sp)
+				lb $s4, 16($sp)
+				lw $ra, 20($sp)
 				addi $sp, $sp, 24
 
 				move $t0, $v0
@@ -576,12 +583,12 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				
 				addi $sp, $sp, -28
 				sw $s0, 0($sp)
-				sb $s1, -4($sp)
-				sb $s2, -8($sp)
-				sb $s3, -12($sp)
-				sb $s4, -16($sp)
-				sb $s5, -20($sp)
-				sw $ra, -24($sp)
+				sb $s1, 4($sp)
+				sb $s2, 8($sp)
+				sb $s3, 12($sp)
+				sb $s4, 16($sp)
+				sb $s5, 20($sp)
+				sw $ra, 24($sp)
 
 				move $a0, $s0 # *state
 				move $a1, $s6 # player
@@ -590,12 +597,12 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
 
 				lw $s0, 0($sp)
-				lb $s1, -4($sp)
-				lb $s2, -8($sp)
-				lb $s3, -12($sp)
-				lb $s4, -16($sp)
-				lb $s5, -20($sp)
-				lw $ra, -24($sp)
+				lb $s1, 4($sp)
+				lb $s2, 8($sp)
+				lb $s3, 12($sp)
+				lb $s4, 16($sp)
+				lb $s5, 20($sp)
+				lw $ra, 24($sp)
 				addi $sp, $sp, 28
 				
 				# beq $s4, $s3, exit_loop_em # Filled all the stones
@@ -627,9 +634,9 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				add_to_mancala_em: # Add stone to player's mancala
 					addi $sp, $sp, -16
 					sw $s0, 0($sp)
-					sb $s1, -4($sp)
-					sb $s2, -8($sp)
-					sw $ra, -12($sp)
+					sb $s1, 4($sp)
+					sb $s2, 8($sp)
+					sw $ra, 12($sp)
 
 					move $a0, $s0
 					move $a1, $s6
@@ -637,9 +644,9 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 					jal collect_stones # Uses $s0 = *state, $s1 = player, $s2 = stones
 
 					lw $s0, 0($sp)
-					lb $s1, -4($sp)
-					lb $s2, -8($sp)
-					lw $ra, -12($sp)
+					lb $s1, 4($sp)
+					lb $s2, 8($sp)
+					lw $ra, 12($sp)
 					addi $sp, $sp, 16
 					
 					addi $s5, $s5, 1 # The output (number of stones added to mancala)
@@ -681,17 +688,20 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 			ret_em_def:
 				jr $ra
 			last_dep_mancala:
+				lb $t0, 4($s0)
+				addi $t0, $t0, 1
+				sb $t0, 4($s0)
 				move $v0, $s5
 				li $v1, 2
 				jr $ra
 			check_empty_bef_dep:
 				addi $sp, $sp, -24
 				sw $s0, 0($sp)
-				sb $s1, -4($sp)
-				sb $s2, -8($sp)
-				sb $s3, -12($sp)
-				sb $s4, -16($sp)
-				sw $ra, -20($sp)
+				sb $s1, 4($sp)
+				sb $s2, 8($sp)
+				sb $s3, 12($sp)
+				sb $s4, 16($sp)
+				sw $ra, 20($sp)
 
 				move $a0, $s0
 				move $a1, $s6
@@ -700,11 +710,11 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				move $t0, $v0 # Get the number of stones
 
 				lw $s0, 0($sp)
-				lb $s1, -4($sp)
-				lb $s2, -8($sp)
-				lb $s3, -12($sp)
-				lb $s4, -16($sp)
-				lw $ra, -20($sp)
+				lb $s1, 4($sp)
+				lb $s2, 8($sp)
+				lb $s3, 12($sp)
+				lb $s4, 16($sp)
+				lw $ra, 20($sp)
 				addi $sp, $sp, 24
 
 				li $t1, 1
@@ -728,6 +738,7 @@ execute_move: # Uses $s0 = *state, $s1 = origin_pocket, $s2 = currentPlayer, $s3
 				
 				original_empty:
 					# Changes turn
+					move $t8, $s1
 					li $v1, 1
 					lb $t0, 5($s0)
 					li $t1, 'B'
@@ -767,10 +778,10 @@ steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number
 	# Get the number of stones in the destination_pocket
 		addi $sp, $sp, -20
 		sw $s0, 0($sp)
-		sb $s1, -4($sp)
-		sb $s2, -8($sp)
-		sb $s3, -12($sp)
-		sw $ra, -16($sp)
+		sb $s1, 4($sp)
+		sb $s2, 8($sp)
+		sb $s3, 12($sp)
+		sw $ra, 16($sp)
 
 		move $a0, $s0 # *state
 		move $a1, $s2 # player
@@ -778,20 +789,20 @@ steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number
 		jal get_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
 
 		lw $s0, 0($sp)
-		lb $s1, -4($sp)
-		lb $s2, -8($sp)
-		lb $s3, -12($sp)
-		lw $ra, -16($sp)
+		lb $s1, 4($sp)
+		lb $s2, 8($sp)
+		lb $s3, 12($sp)
+		lw $ra, 16($sp)
 		addi $sp, $sp, 20
 
 		add $s3, $s3, $v0
 	# Set the number of stones in the destination_pocket to 0
 		addi $sp, $sp, -20
 		sw $s0, 0($sp)
-		sb $s1, -4($sp)
-		sb $s2, -8($sp)
-		sb $s3, -12($sp)
-		sw $ra, -16($sp)
+		sb $s1, 4($sp)
+		sb $s2, 8($sp)
+		sb $s3, 12($sp)
+		sw $ra, 16($sp)
 
 		move $a0, $s0
 		move $a1, $s2
@@ -800,19 +811,19 @@ steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number
 		jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
 	
 		lw $s0, 0($sp)
-		lb $s1, -4($sp)
-		lb $s2, -8($sp)
-		lb $s3, -12($sp)
-		lw $ra, -16($sp)
+		lb $s1, 4($sp)
+		lb $s2, 8($sp)
+		lb $s3, 12($sp)
+		lw $ra, 16($sp)
 		addi $sp, $sp, 20
 
 	# Get the number of stones in the opposite of the destination_pocket (n - i - 1)
 		addi $sp, $sp, -20
 		sw $s0, 0($sp)
-		sb $s1, -4($sp)
-		sb $s2, -8($sp)
-		sb $s3, -12($sp)
-		sw $ra, -16($sp)
+		sb $s1, 4($sp)
+		sb $s2, 8($sp)
+		sb $s3, 12($sp)
+		sw $ra, 16($sp)
 
 		lb $t0, 2($s0) # n
 		addi $t0, $t0, -1 # n - 1
@@ -824,20 +835,20 @@ steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number
 		jal get_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
 
 		lw $s0, 0($sp)
-		lb $s1, -4($sp)
-		lb $s2, -8($sp)
-		lb $s3, -12($sp)
-		lw $ra, -16($sp)
+		lb $s1, 4($sp)
+		lb $s2, 8($sp)
+		lb $s3, 12($sp)
+		lw $ra, 16($sp)
 		addi $sp, $sp, 20
 
 		add $s3, $s3, $v0 # Increment the total number of stones
 	# Set the number of stones in the opposite of the destination_pocket to 0
 		addi $sp, $sp, -20
 		sw $s0, 0($sp)
-		sb $s1, -4($sp)
-		sb $s2, -8($sp)
-		sb $s3, -12($sp)
-		sw $ra, -16($sp)
+		sb $s1, 4($sp)
+		sb $s2, 8($sp)
+		sb $s3, 12($sp)
+		sw $ra, 16($sp)
 	
 		lb $t0, 2($s0) # n
 		addi $t0, $t0, -1 # n - 1
@@ -850,10 +861,10 @@ steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number
 		jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
 
 		lw $s0, 0($sp)
-		lb $s1, -4($sp)
-		lb $s2, -8($sp)
-		lb $s3, -12($sp)
-		lw $ra, -16($sp)
+		lb $s1, 4($sp)
+		lb $s2, 8($sp)
+		lb $s3, 12($sp)
+		lw $ra, 16($sp)
 		addi $sp, $sp, 20
 	
 	addi $sp, $sp, -16
@@ -875,6 +886,9 @@ steal: # Uses $s0 = *state, $s1 = destination_pocket, $s2 = player, $s3 = number
 
 	# $v0 = number of stones added to player's mancala
 	move $v0, $s3
+	lb $t0, 4($s0)
+	addi $t0, $t0, 1
+	sb $t0, 4($s0)
 	jr $ra
 check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = from the top to the bottom/total_stones, $s4 = flags for (non-)empty, $s5 = player with empty mancala, $s6 = Exit
 	# int check_row(GameState* state)
@@ -941,10 +955,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 
 				addi $sp, $sp, -20
 				sw $s0, 0($sp)
-				sb $s1, -4($sp)
-				sb $s2, -8($sp)
-				sb $s3, -12($sp)
-				sw $ra, -16($sp)
+				sb $s1, 4($sp)
+				sb $s2, 8($sp)
+				sb $s3, 12($sp)
+				sw $ra, 16($sp)
 
 				move $a0, $s0
 				li $a1, 'B'
@@ -952,10 +966,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 				jal get_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
 
 				lw $s0, 0($sp)
-				lb $s1, -4($sp)
-				lb $s2, -8($sp)
-				lb $s3, -12($sp)
-				lw $ra, -16($sp)
+				lb $s1, 4($sp)
+				lb $s2, 8($sp)
+				lb $s3, 12($sp)
+				lw $ra, 16($sp)
 				addi $sp, $sp, 20
 
 				add $s3, $s3, $v0 # Collect the total number of stones to add to mancala
@@ -971,10 +985,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 				set_p_only_top:
 					addi $sp, $sp, -20
 					sw $s0, 0($sp)
-					sb $s1, -4($sp)
-					sb $s2, -8($sp)
-					sb $s3, -12($sp)
-					sw $ra, -16($sp)
+					sb $s1, 4($sp)
+					sb $s2, 8($sp)
+					sb $s3, 12($sp)
+					sw $ra, 16($sp)
 
 					move $a0, $s0
 					li $a1, 'B'
@@ -983,10 +997,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 					jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
 
 					lw $s0, 0($sp)
-					lb $s1, -4($sp)
-					lb $s2, -8($sp)
-					lb $s3, -12($sp)
-					lw $ra, -16($sp)
+					lb $s1, 4($sp)
+					lb $s2, 8($sp)
+					lb $s3, 12($sp)
+					lw $ra, 16($sp)
 					addi $sp, $sp, 20
 
 				cont_loop_only_top:
@@ -996,10 +1010,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 			exit_loop_only_top_cr:
 				addi $sp, $sp, -16
 				sw $s0, 0($sp)
-				sb $s1, -4($sp)
-				sb $s2, -8($sp)
+				sb $s1, 4($sp)
+				sb $s2, 8($sp)
 				# sb $s3, -12($sp)
-				sw $ra, -12($sp)
+				sw $ra, 12($sp)
 
 				move $a0, $s0
 				li $a1, 'B'
@@ -1025,10 +1039,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 
 				addi $sp, $sp, -20
 				sw $s0, 0($sp)
-				sb $s1, -4($sp)
-				sb $s2, -8($sp)
-				sb $s3, -12($sp)
-				sw $ra, -16($sp)
+				sb $s1, 4($sp)
+				sb $s2, 8($sp)
+				sb $s3, 12($sp)
+				sw $ra, 16($sp)
 
 				move $a0, $s0
 				li $a1, 'T'
@@ -1036,10 +1050,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 				jal get_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3, $s4
 
 				lw $s0, 0($sp)
-				lb $s1, -4($sp)
-				lb $s2, -8($sp)
-				lb $s3, -12($sp)
-				lw $ra, -16($sp)
+				lb $s1, 4($sp)
+				lb $s2, 8($sp)
+				lb $s3, 12($sp)
+				lw $ra, 16($sp)
 				addi $sp, $sp, 20
 
 				add $s3, $s3, $v0 # Collect the total number of stones to add to mancala
@@ -1054,10 +1068,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 				set_p_only_bot:
 					addi $sp, $sp, -20
 					sw $s0, 0($sp)
-					sb $s1, -4($sp)
-					sb $s2, -8($sp)
-					sb $s3, -12($sp)
-					sw $ra, -16($sp)
+					sb $s1, 4($sp)
+					sb $s2, 8($sp)
+					sb $s3, 12($sp)
+					sw $ra, 16($sp)
 
 					move $a0, $s0
 					li $a1, 'T'
@@ -1066,10 +1080,10 @@ check_row: # Uses $s0 = *state, $s1 = iterations, $s2 = max iterations, $s3 = fr
 					jal set_pocket # Uses $s0 = *state, $s1 = player, $s2 = distance, $s3 = size, $s4, $s5
 
 					lw $s0, 0($sp)
-					lb $s1, -4($sp)
-					lb $s2, -8($sp)
-					lb $s3, -12($sp)
-					lw $ra, -16($sp)
+					lb $s1, 4($sp)
+					lb $s2, 8($sp)
+					lb $s3, 12($sp)
+					lw $ra, 16($sp)
 					addi $sp, $sp, 20
 
 				cont_loop_only_bot:
@@ -1287,8 +1301,226 @@ load_moves: # Uses $s0 = moves, $s1 = filename, $s2 = file descriptor, $s3 = inp
 	file_not_found_lm:
 		li $v0, -1
 		jr $ra
-play_game:
-	jr  $ra
+play_game: # Extra: $s0-$s4 + $s5, $s6, $s7
+	# int, int play_game (string moves_filename, string board_filename, GameState* state, byte[] moves, int num_moves_to_execute)
+	move $s0, $a2 # *state
+	move $s1, $a1 # board_filename
+	move $s2, $a0 # moves_filename
+	move $s3, $a3 # addr. to moves[]
+	lw $s4, 0($sp) # num_moves_to_execute
+
+	addi $sp, $sp, -28
+	sw $s0, 4($sp)
+	sw $s1, 8($sp)
+	sw $s2, 12($sp)
+	sw $s3, 16($sp)
+	sw $s4, 20($sp)
+	sw $ra, 24($sp)
+	move $t8, $ra
+	
+	move $a0, $s0
+	move $a1, $s1
+	jal load_game # $s0-$s5
+
+	lw $s0, 4($sp)
+	lw $s1, 8($sp)
+	lw $s2, 12($sp)
+	lw $s3, 16($sp)
+	lw $s4, 20($sp)
+	lw $ra, 24($sp)
+	addi $sp, $sp, 28
+	move $ra, $t8
+
+	blez $v0, file_error
+	blez $v1, file_error
+
+	addi $sp, $sp, -36
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	sw $s4, 16($sp)
+	sb $s5, 20($sp)
+	sb $s6, 24($sp)
+	sb $s7, 28($sp)
+	sw $ra, 32($sp)
+	move $t8, $ra
+
+	move $a0, $s3 # Address to moves
+	move $a1, $s2
+	jal load_moves # $s0-$s7
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lb $s5, 20($sp)
+	lb $s6, 24($sp)
+	lb $s7, 28($sp)
+	lw $ra, 32($sp)
+	addi $sp, $sp, 36
+	move $ra, $t8
+
+	blez $v0, file_error
+	move $s5, $v0 # number of moves in array
+	
+	# if num_moves_to_execute < arr_size (use arr_size iterations)
+	# if arr_size >= num_moves_to_execute (use num_moves_to_execute)
+	blt $s4, $s5, use_arr_size
+	j ignore_arr_size # Otherwise, execute the number of moves
+	use_arr_size:
+		move $s4, $s5 # Use arr_size as num. of iterations
+	ignore_arr_size:
+		# Free $s6
+		li $s7, 0 # Total Num. of moves done (inc. invalid)
+		loop_play_game:
+			lb $t0, 4($s0)
+			bge $t0, $s4, preexit_loop_play_game # Max number of moves reached
+			bge $s7, $s5, preexit_loop_play_game # Reached the end of the array, exit; num of moves done < $s5
+			lb $t0, 0($s3) # Get the move from array
+			bltz $t0, continue_loop_play_game # If there is an invalid move, skip it
+			
+			addi $sp, $sp, -24
+			sw $s0, 0($sp)
+			sw $s1, 4($sp)
+			sw $s2, 8($sp)
+			sw $s3, 12($sp)
+			sw $s4, 16 ($sp)
+			sw $ra, 20($sp)
+
+			move $a0, $s0
+			lb $a1, 5($s0)
+			move $a2, $t0
+			jal get_pocket # s0-s4
+
+			lw $s0, 0($sp)
+			lw $s1, 4($sp)
+			lw $s2, 8($sp)
+			lw $s3, 12($sp)
+			lw $s4, 16 ($sp)
+			lw $ra, 20($sp)
+			addi $sp, $sp, 24
+			move $s6, $v0
+
+			addi $sp, $sp, -20
+			sw $s0, 0($sp)
+			sw $s1, 4($sp)
+			sw $s2, 8($sp)
+			sw $ra, 12($sp)
+			move $t8, $ra
+
+			move $a0, $s0
+			lb $a1, 0($s3) # origin_pocket
+			move $a2, $s6 # Stones in origin_pocket
+			jal verify_move # s0-s2
+
+			lw $s0, 0($sp)
+			lw $s1, 4($sp)
+			lw $s2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 20
+			move $ra, $t8
+			move $s6, $v0 # store output in $s6
+			
+			# verify_move: if output is 1, then execute the move, if 2 then continue_loop (change turn), otherwise check_row
+			li $t0, 2
+			beq $t0, $s6, continue_loop_play_game # move = 99
+			li $t0, 1
+			beq $t0, $s6, exe_pg # execute the move
+			j continue_loop_play_game
+			exe_pg:
+				addi $sp, $sp, -36
+				sw $s0, 0($sp)
+				sw $s1, 4($sp)
+				sw $s2, 8($sp)
+				sw $s3, 12($sp)
+				sw $s4, 16($sp)
+				sb $s5, 20($sp)
+				sb $s6, 24($sp)
+				sw $ra, 28($sp)
+
+				move $a0, $s0
+				lb $a1, 0($s3)
+				jal execute_move # Uses $s0 = *state, $s1 = origin_pocket, $s3-$s6
+
+				lw $s0, 0($sp)
+				lw $s1, 4($sp)
+				lw $s2, 8($sp)
+				lw $s3, 12($sp)
+				lw $s4, 16($sp)
+				lb $s5, 20($sp)
+				lb $s6, 24($sp)
+				lw $ra, 28($sp)
+				addi $sp, $sp, 36
+				
+				move $s6, $v0 # s6 has output
+				li $t0, 1
+				beq $s6, $t0, steal_exe # Execute Steal
+				j out_exe_pg
+				steal_exe:
+					# lb $s6, 0($sp)
+					# addi $sp, $sp, 4
+					move $s6, $t8
+					addi $sp, $sp, -24
+					sw $s0, 0($sp)
+					sw $s1, 4($sp)
+					sw $s2, 8($sp)
+					sw $s3, 12($sp)
+					sw $ra, 16($sp)
+					
+					move $a0, $s0
+					move $a1, $s6 # Destination pocket
+					jal steal # s0-s3
+
+					lw $s0, 0($sp)
+					lw $s1, 4($sp)
+					lw $s2, 8($sp)
+					lw $s3, 12($sp)
+					lw $ra, 16($sp)
+					addi $sp, $sp, 24
+					j out_exe_pg
+			out_exe_pg:
+				addi $sp, $sp, -36
+				sw $s0, 0($sp)
+				sw $s1, 4($sp)
+				sw $s2, 8($sp)
+				sw $s3, 12($sp)
+				sw $s4, 16($sp)
+				sb $s5, 20($sp)
+				sb $s6, 24($sp)
+				sw $ra, 28($sp)
+
+				move $a0, $s0 # *state
+				jal check_row # s0-s6
+
+				lw $s0, 0($sp)
+				lw $s1, 4($sp)
+				lw $s2, 8($sp)
+				lw $s3, 12($sp)
+				lw $s4, 16($sp)
+				lb $s5, 20($sp)
+				lb $s6, 24($sp)
+				lw $ra, 28($sp)
+				addi $sp, $sp, 36
+				move $s6, $v0
+				li $t0, 1
+				beq $t0, $s6, exit_loop_play_game # If $v0 == 1 (game over), game result is in $v1
+			continue_loop_play_game:
+				addi $s4, $s4, -1 # Go to the next move
+				addi $s7, $s7, 1 # Increase total num. of moves done
+			preexit_loop_play_game:
+				li $v0, 0
+				lb $v1, 4($s0)
+				jr $ra
+		exit_loop_play_game:
+			move $v0, $v1
+			lb $v1, 4($s0)
+			jr $ra
+	file_error:
+		li $v0, -1
+		li $v1, -1
+		jr $ra
 print_board: # Uses $s0 = *state
 	# void print_board(GameState* state)
 	move $s0, $a0
