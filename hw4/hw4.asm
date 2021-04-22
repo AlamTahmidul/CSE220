@@ -44,13 +44,12 @@ str_equals:
 	notEq_strEq:
 		li $v0, 0
 		jr $ra
-str_cpy: # Uses $s0 = *src, $s1 = *dest
+str_cpy: # $s0 = *dest
 	# int str_cpy(char* src, char* dest)
 	move $s0, $a0
-	move $s1, $a1
 
-	move $t4, $s0 # Copy the string
-	move $t5, $s1
+	move $t4, $a0 # Copy the string
+	move $t5, $a1
 	loop_str_copy:
 		lbu $t0, 0($t4)
 		beqz $t0, exit_loop_str_copy
@@ -60,22 +59,42 @@ str_cpy: # Uses $s0 = *src, $s1 = *dest
 		addi $t4, $t4, 1 # Go to the next character
 		j loop_str_copy
 	exit_loop_str_copy:
-		addi $sp, $sp, -8
+		addi $sp, $sp, -4
 		sw $ra, 0($sp)
-		sw $s0, 4($sp)
 
-		move $a0, $s1
+		move $a0, $s0
 		jal str_len
 		
 		lw $ra, 0($sp)
-		lw $s0, 4($sp)
-		addi $sp, $sp, 8
+		addi $sp, $sp, 4
 
 		# $v0 should have the length of the string
 		jr $ra
-create_person:
+create_person: # $s0 = *network
+	# Node* create_person(Network* ntwrk)
+	move $s0, $a0
+
+	lw $t0, 16($s0) # Gets the current number of nodes
+	lw $t1, 0($s0) # Gets the total number of nodes
+	beq $t0, $t1, cp_full_nodes
+
+	# $t0 has the current number of nodes
+	# index location of newly added node = 36 + (cur_num_of_nodes * size_of_node)
+	lw $t1, 8($s0) # Gets the size_of_node
+	mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; cur_num_of_nodes * size_of_node
+	mflo	$t0					# copy Lo to $t0; $t0 holds the product
+	addi $t0, $t0, 36 # Go to the empty node
+
+	add $v0, $s0, $t0 # Return the sum of address + location of empty node
+	lbu $t0, 16($s0) # Get curr_num_of_nodes 
+	addi $t0, $t0, 1 # Increase num. of current nodes by 1 
+	sb $t0, 16($s0) # Update the network
 	jr $ra
+	cp_full_nodes:
+		li $v0, -1 # Nodes are full
+		jr $ra
 is_person_exists:
+	
 	jr $ra
 is_person_name_exists:
 	jr $ra

@@ -1,6 +1,6 @@
 # add test cases to data section
 .data
-src: .asciiz "\0"
+src: .asciiz "Jane Doe"
 dest: .asciiz ""
 
 .text:
