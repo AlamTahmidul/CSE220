@@ -93,10 +93,47 @@ create_person: # $s0 = *network
 	cp_full_nodes:
 		li $v0, -1 # Nodes are full
 		jr $ra
-is_person_exists:
-	
-	jr $ra
+is_person_exists: # $s0 = *ntwrk, $s1 = person
+	# int is_person_exists(Network* ntwrk, Node* person)
+	move $s0, $a0
+	move $s1, $a1 # Person
+
+	li $t4, 0 # Counter
+	loop_is_person:
+		# Get the maximum number of iterations based on current number of nodes
+		lw $t1, 16($s0) # Current Number of nodes
+		bge $t4, $t1, not_found_is_person
+
+		lw $t0, 8($s0) # Size of node
+		# 36 + (i*size) = location of node
+		mult	$t4, $t1			# $t4 * $t1 = Hi and Lo registers; index * size of node
+		mflo	$t0					# copy Lo to $t0; $t0 holds the product
+		
+		add $t0, $s0, $t0 # Addr += location
+		addi $a0, $t0, 36 # Go to the node
+		move $a1, $s1
+		
+		addi $sp, $sp, -4
+		sw $ra, 0($sp)
+
+		jal str_equals
+
+		lw $ra, 0($sp)
+		addi $sp, $sp, 4
+
+		bgtz $v0, exit_loop_is_person # Person matches
+		
+		addi $t4, $t4, 1 # Increase counter
+		j loop_is_person
+	exit_loop_is_person:
+		# Return 1 (if found) or return 0
+		li $v0, 1
+		jr $ra
+	not_found_is_person:
+		li $v0, 0
+		jr $ra
 is_person_name_exists:
+	
 	jr $ra
 add_person_property:
 	jr $ra

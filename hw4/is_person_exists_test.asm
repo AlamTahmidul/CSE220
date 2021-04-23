@@ -18,15 +18,20 @@ Network:
 
 .text:
 main:
-	la $a0, Network
-	jal create_person
-	move $s0, $v0
+	# la $a0, Network
+	# jal create_person
+	# move $s0, $v0
+  la $a1, Network
+  addi $a1, $a1, 36
 	
 	la $a0, Network
-	move $a1, $s0
+	# move $a1, $s0
 	jal is_person_exists
 	#write test code
-	
+	move $a0, $v0
+  li $v0, 1
+  syscall
+
 	li $v0, 10
 	syscall
 	
