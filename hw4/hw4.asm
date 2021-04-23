@@ -106,22 +106,25 @@ is_person_exists: # $s0 = *ntwrk, $s1 = person
 
 		lw $t0, 8($s0) # Size of node
 		# 36 + (i*size) = location of node
-		mult	$t4, $t1			# $t4 * $t1 = Hi and Lo registers; index * size of node
+		mult	$t4, $t0			# $t4 * $t0 = Hi and Lo registers; index * size of node
 		mflo	$t0					# copy Lo to $t0; $t0 holds the product
 		
 		add $t0, $s0, $t0 # Addr += location
-		addi $a0, $t0, 36 # Go to the node
-		move $a1, $s1
+		addi $t0, $t0, 36 # Go to the node
+		beq $t0, $s1, exit_loop_is_person # If the addresses are the same, then return 1
+
+		# addi $a0, $t0, 36 # Go to the node
+		# move $a1, $s1
 		
-		addi $sp, $sp, -4
-		sw $ra, 0($sp)
+		# addi $sp, $sp, -4
+		# sw $ra, 0($sp)
 
-		jal str_equals
+		# jal str_equals
 
-		lw $ra, 0($sp)
-		addi $sp, $sp, 4
+		# lw $ra, 0($sp)
+		# addi $sp, $sp, 4
 
-		bgtz $v0, exit_loop_is_person # Person matches
+		# bgtz $v0, exit_loop_is_person # Person matches
 		
 		addi $t4, $t4, 1 # Increase counter
 		j loop_is_person
@@ -132,9 +135,18 @@ is_person_exists: # $s0 = *ntwrk, $s1 = person
 	not_found_is_person:
 		li $v0, 0
 		jr $ra
-is_person_name_exists:
-	
-	jr $ra
+is_person_name_exists: # $s0 = *ntwrk, $s1 = name
+	# int is_person_name_exists(Network* ntwrk, char* name)
+	move $s0, $a0
+	move $s1, $a1
+
+	li $t4, 0 # Counter
+	loop_is_person_name:
+
+		j loop_is_person_name
+	exit_loop_is_person_name:
+		# Return value here
+		jr $ra
 add_person_property:
 	jr $ra
 get_person:
