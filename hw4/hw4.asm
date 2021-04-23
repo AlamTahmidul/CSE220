@@ -142,7 +142,7 @@ is_person_exists: # $s0 = *ntwrk, $s1 = person
 	not_found_is_person:
 		li $v0, 0
 		jr $ra
-is_person_name_exists: # $s0 = *ntwrk, $s1 = name, $s2 = copy of counter, $s3 = copy of address
+is_person_name_exists: # $s0 = *ntwrk, $s1 = *name, $s2 = copy of counter, $s3 = copy of address
 	# int is_person_name_exists(Network* ntwrk, char* name)
 	move $s0, $a0
 	move $s1, $a1
@@ -196,9 +196,106 @@ is_person_name_exists: # $s0 = *ntwrk, $s1 = name, $s2 = copy of counter, $s3 = 
 		li $v0, 1
 		move $v1, $s3
 		jr $ra
-add_person_property:
-	
+add_person_property: # $s0-$s3
+	# int add_person_property(Network* ntwrk, Node* person, char* prop_name, char* prop_val)
+	move $s0, $a0
+	move $s1, $a1
+	move $s2, $a2
+	move $s3, $a3
+
+	### CONDITION 1 ###
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $a0, $s2 # Copy the address of prop_name
+	move $a1, $s0 
+	addi $a1, $a1, 24 # Gets the address of the NAME property (arg2)
+	jal str_equals
+
+	lw $ra, 0($sp) # Restore return address
+	addi $sp, $sp, 4
+
+	beqz $v0, add_p_ret0 # Property name does not match (cond. 1)
+
+	### CONDITION 2 ###
+	addi $sp, $sp, -12
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $ra, 8($sp)
+	move $a0, $s0 # *ntwrk
+	move $a1, $s1 # *person
+	jal is_person_exists
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	beqz $v0, add_p_retn1 # Person does not exist in network (cond. 2)
+
+	### CONDITION 3 ###
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+
+	move $a0, $s3 # *prop_val
+	jal str_len
+
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	lw $t0, 8($s0) # Get the size_of_node
+	bge $v0, $t0, add_p_retn2 # strlen(prop_val) >= Network.size_of_node (cond. 3)
+
+	### CONDITION 4 ###
+	addi $sp, $sp, -20
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $ra, 8($sp)
+	sw $s2, 12($sp)
+	sw $s3, 16($sp)
+
+	move $a0, $s0 # *ntwrk
+	move $a1, $s3 # *name = *prop_val
+	jal is_person_name_exists
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $ra, 8($sp)
+	lw $s2, 12($sp)
+	lw $s3, 16($sp)
+	addi $sp, $sp, 20
+	bgtz $v0, add_p_retn3 # Person does not have an unique name (cond. 4)
+	# move $a0, $v0
+	# li $v0, 1
+	# syscall
+	# j end
+
+	### OTHERWISE, VALID name and property insert ###
+	# TODO: strcopy(prop_val, *person)
+	addi $sp, $sp, -8
+	sw $s0, 0($sp)
+	sw $ra, 4($sp)
+
+	move $a0, $s3 # *src = *prop_val
+	move $a1, $s1  # *dst = *person
+	jal str_cpy
+
+	lw $s0, 0($sp)
+	lw $ra, 4($sp)
+	addi $sp, $sp, 8
+
+	li $v0, 1
 	jr $ra
+	add_p_ret0:
+		li $v0, 0
+		jr $ra
+	add_p_retn1:
+		li $v0, -1
+		jr $ra
+	add_p_retn2:
+		li $v0, -2
+		jr $ra
+	add_p_retn3:
+		li $v0, -3
+		jr $ra
+
 get_person:
 	jr $ra
 is_relation_exists:
