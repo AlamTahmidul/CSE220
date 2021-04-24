@@ -296,11 +296,103 @@ add_person_property: # $s0-$s3
 		li $v0, -3
 		jr $ra
 
-get_person:
-	jr $ra
-is_relation_exists:
-	jr $ra
+get_person: # $s0-s1
+	# Node* get_person(Network* network, char* name)
+	move $s0, $a0
+	move $s1, $a1
+
+	# Check if current > total
+	lw $t0, 16($s0) # Nodes -> 0
+	lw $t1, 0($s0)
+	bgt	$t0, $t1, not_found_getPerson	# if $t0 > $t1 then err
+	bltz $t0, not_found_getPerson # Or if current_num_of_nodes is an invalid input
+	
+	lw $t0, 20($s0) # Edges -> 4
+	lw $t1, 4($s0)
+	bgt	$t0, $t1, not_found_getPerson	# if $t0 > $t1 then err
+	bltz $t0, not_found_getPerson
+
+	### CODE BODY ###
+	# Call part 6 and if $v0 = 1 (found) otherwise not found
+	addi $sp, $sp, -12
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $ra, 8($sp)
+
+	move $a0, $s0
+	move $a1, $s1
+	jal is_person_name_exists
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	# Do stuff after
+	beqz $v0, not_found_getPerson # If $v0 is 0 then the person does not exist
+	move $t0, $v1
+	j found_getPerson # Otherwise, person's address is in $v1
+	found_getPerson:
+		move $v0, $t0
+		jr $ra
+	not_found_getPerson:
+		li $v0, 0
+		jr $ra
+is_relation_exists: # $s0-s2
+	# int is_relation_exists(Network* ntwrk, Node* person1, Node* person2)
+	move $s0, $a0 # *ntwrk
+	move $s1, $a1 # *person1
+	move $s2, $a2 # *person2
+
+	# Check if current > total
+	lw $t0, 16($s0) # Nodes -> 0
+	lw $t1, 0($s0)
+	bgt	$t0, $t1, not_found_relationExists	# if $t0 > $t1 then err
+	bltz $t0, not_found_relationExists # Or if current_num_of_nodes is an invalid input
+	
+	lw $t0, 20($s0) # Edges -> 4
+	lw $t1, 4($s0)
+	bgt	$t0, $t1, not_found_relationExists	# if $t0 > $t1 then err
+	bltz $t0, not_found_relationExists
+
+	# 36 + total_nodes*size_of_node = start of edges
+	lw $t0, 0($s0) # Get total_nodes
+	lw $t1, 8($s0) # Get size_of_nodes
+	mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; total_nodes * size_of_node
+	mflo	$t0					# copy Lo to $t0; $t0 holds product
+	addi $t4, $t0, 36 # 36 + (total_nodes * size_of_node)
+	
+	add $t4, $s0, $t4 # $t4 = base_address + 36 + (total_nodes * size_of_node); beginning of the edges array
+	li $t3, 0 # Counter
+	loop_relationExists:
+		lw $t0, 20($s0) # Get current number of edges
+		beq $t0, $t3, not_found_relationExists
+
+		lw $t0, 0($t4)
+		lw $t1, 4($t4)
+		beqz $t0, not_found_relationExists # If there is an entry that is 0, then there are no more relationships?
+		beqz $t1, not_found_relationExists # If there is an entry that is 0, then there are no more relationships?
+
+		seq $t2, $t0, $s1 # if the first of the pair is *person1
+		seq $t5, $t1, $s2 # if the second of the pair is *person2
+		and $t2, $t2, $t5 # If *person1 and *person2 then 1 otherwise 0
+		bnez $t2, found_relationExists # There is a relationship
+
+		seq $t2, $t0, $s2 # if the first of the pair is *person2
+		seq $t5, $t1, $s1 # if the second of the pair is *person1
+		and $t2, $t2, $t5 # If *person2 and *person1 then 1 otherwise 0
+		bnez $t2, found_relationExists # There is a relationship
+
+		addi $t4, $t4, 8 # Go to the next pair
+		addi $t3, $t3, 1 # Increment counter
+		j loop_relationExists
+	found_relationExists:
+		li $v0, 1
+		jr $ra
+	not_found_relationExists:
+		li $v0, 0
+		jr $ra
 add_relation:
+	
 	jr $ra
 add_relation_property:
 	jr $ra
