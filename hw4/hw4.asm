@@ -459,7 +459,17 @@ add_relation: # $s0-s2 (With Word-Alignment edges)
 	
 	### CONDITION 4 ###
 		beq $s1, $s2, ret_addRelation3 # *person1 == *person2 (itself)
+		
+		addi $sp, $sp, -4 # Check the name
+		sw $ra, 0($sp)
 
+		move $a0, $s1
+		move $a1, $s2
+		jal str_equals
+
+		lw $ra, 0($sp)
+		addi $sp, $sp, 4
+		bnez $v0, ret_addRelation3
 	### ON SUCCESS ###
 		lw $t0, 0($s0) # Get total_nodes
 		lw $t1, 8($s0) # Get size_of_node
@@ -686,6 +696,9 @@ is_friend_of_friend: # $s0-$s2; $s3-$s4
 				move $t3, $s4 # Restore $t3
 				addi $sp, $sp, 20
 				beqz $v0, continue_isfof # If there is no relation between person1 and person2
+				# $v1 returns the address to the edge
+				lw $t0, 8($v1) # Get the integer that tells if friends or not
+				beqz $t0, continue_isfof # Not Friends
 	
 			# Otherwise, check for a relationship between person2 and person3
 				addi $sp, $sp, -20
@@ -708,6 +721,9 @@ is_friend_of_friend: # $s0-$s2; $s3-$s4
 				lw $s3, 16($sp)
 				move $t3, $s4 # Restore $t3
 				addi $sp, $sp, 20
+				# $v1 returns the address to the edge
+				lw $t0, 8($v1) # Get the integer that tells if friends or not
+				beqz $t0, continue_isfof # Not Friends
 				bnez $v0, ret_isfof_found # If there is a relation between person2 and person3, then person1 is a friend-of-friend of person3
 				# Otherwise, continue the loop
 			continue_isfof:
