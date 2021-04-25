@@ -24,7 +24,7 @@ str_equals:
 		lbu $t0, 0($t4)
 		lbu $t1, 0($t5)
 		beqz $t0, exit_loop_strEq
-		beqz $t0, exit_loop_strEq
+		beqz $t1, exit_loop_strEq
 		
 		bne	$t0, $t1, notEq_strEq	# if $t0 != $t1 then notEq_strEq
 
@@ -262,13 +262,8 @@ add_person_property: # $s0-$s3
 	lw $s3, 16($sp)
 	addi $sp, $sp, 20
 	bgtz $v0, add_p_retn3 # Person does not have an unique name (cond. 4)
-	# move $a0, $v0
-	# li $v0, 1
-	# syscall
-	# j end
 
 	### OTHERWISE, VALID name and property insert ###
-	# TODO: strcopy(prop_val, *person)
 	addi $sp, $sp, -8
 	sw $s0, 0($sp)
 	sw $ra, 4($sp)
@@ -407,96 +402,97 @@ add_relation: # $s0-s2 (With Word-Alignment edges)
 	move $s2, $a2
 
 	### CONDITION 1 ###
-	addi $sp, $sp, -12
-	sw $s0, 0($sp)
-	sw $s1, 4($sp)
-	sw $ra, 8($sp)
+		addi $sp, $sp, -12
+		sw $s0, 0($sp)
+		sw $s1, 4($sp)
+		sw $ra, 8($sp)
 
-	move $a0, $s0
-	move $a1, $s1
-	jal is_person_exists
+		move $a0, $s0
+		move $a1, $s1
+		jal is_person_exists
 
-	lw $s0, 0($sp)
-	lw $s1, 4($sp)
-	lw $ra, 8($sp)
-	addi $sp, $sp, 12
-	beqz $v0, ret_addRelation0  # *person1 does not exist
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $ra, 8($sp)
+		addi $sp, $sp, 12
+		beqz $v0, ret_addRelation0  # *person1 does not exist
 
-	addi $sp, $sp, -12
-	sw $s0, 0($sp)
-	sw $s1, 4($sp)
-	sw $ra, 8($sp)
+		addi $sp, $sp, -12
+		sw $s0, 0($sp)
+		sw $s1, 4($sp)
+		sw $ra, 8($sp)
 
-	move $a0, $s0
-	move $a1, $s2
-	jal is_person_exists
+		move $a0, $s0
+		move $a1, $s2
+		jal is_person_exists
 
-	lw $s0, 0($sp)
-	lw $s1, 4($sp)
-	lw $ra, 8($sp)
-	addi $sp, $sp, 12
-	beqz $v0, ret_addRelation0  # *person2 does not exist
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $ra, 8($sp)
+		addi $sp, $sp, 12
+		beqz $v0, ret_addRelation0  # *person2 does not exist
 
 	### CONDITION 2 ###
-	lw $t0, 20($s0) # Get current number of edges
-	lw $t1, 4($s0) # Get total number of edges
-	bge $t0, $t1, ret_addRelation1 # if curr_num_of_edges >= total_edges then err
-	bltz $t0, ret_addRelation1 # If negative number of edges
+		lw $t0, 20($s0) # Get current number of edges
+		lw $t1, 4($s0) # Get total number of edges
+		bge $t0, $t1, ret_addRelation1 # if curr_num_of_edges >= total_edges then err
+		bltz $t0, ret_addRelation1 # If negative number of edges
 
 	### CONDITION 3 ###
-	addi $sp, $sp, -16
-	sw $s0, 0($sp)
-	sw $s1, 4($sp)
-	sw $s2, 8($sp)
-	sw $ra, 12($sp)
+		addi $sp, $sp, -16
+		sw $s0, 0($sp)
+		sw $s1, 4($sp)
+		sw $s2, 8($sp)
+		sw $ra, 12($sp)
 
-	move $a0, $s0
-	move $a1, $s1
-	move $a2, $s2
-	jal is_relation_exists # returns 1 if they are already related
+		move $a0, $s0
+		move $a1, $s1
+		move $a2, $s2
+		jal is_relation_exists # returns 1 if they are already related
 
-	lw $s0, 0($sp)
-	lw $s1, 4($sp)
-	lw $s2, 8($sp)
-	lw $ra, 12($sp)
-	addi $sp, $sp, 16
-	bnez $v0, ret_addRelation2 # *person1 and *person2 are already related
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		bnez $v0, ret_addRelation2 # *person1 and *person2 are already related
 	
 	### CONDITION 4 ###
-	beq $s1, $s2, ret_addRelation3 # *person1 == *person2 (itself)
+		beq $s1, $s2, ret_addRelation3 # *person1 == *person2 (itself)
 
 	### ON SUCCESS ###
-	lw $t0, 0($s0) # Get total_nodes
-	lw $t1, 8($s0) # Get size_of_node
-	mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; total_nodes * size_of_node
-	mflo	$t0					# copy Lo to $t0; $t0 holds the product
-	addi $t3, $t0, 36 # $t3 = 36 + (total_nodes * size_of_node)
-	# Logic (Word Alignment): $t3 + (4 - $t3 % 4)
-	li $t0, 4
-	div		$t3, $t0			# $t3 / $t0
-	mfhi	$t1					# $t1 = $t3 mod 4
-	beqz $t1, ignore_word_al_addRel
-	li $t0, 4
-	sub $t0, $t0, $t1 # $t0 = 4 - ($t3 % 4)
-	add $t3, $t3, $t0 # $t3 += (4 - $t3 % 4)
-	ignore_word_al_addRel:
-		add $t3, $s0, $t3 # $t3 = base addr. + 36 + (total_nodes * size_of_node)
-		# Logic: $t3 + 12(curr_edge) = location to allocate for new edge
-		li $t0, 12
-		lw $t1, 20($s0) # Get curr_edge
-		mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; 12 * curr_edge
-		mflo	$t0					# copy Lo to $t0; $t0 holds product
-		add $t3, $t3, $t0 # $t3 + 12*curr_edge = location of empty edge
+		lw $t0, 0($s0) # Get total_nodes
+		lw $t1, 8($s0) # Get size_of_node
+		mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; total_nodes * size_of_node
+		mflo	$t0					# copy Lo to $t0; $t0 holds the product
+		addi $t3, $t0, 36 # $t3 = 36 + (total_nodes * size_of_node)
+		
+		# Logic (Word Alignment): $t3 + (4 - $t3 % 4)
+			li $t0, 4
+			div		$t3, $t0			# $t3 / $t0
+			mfhi	$t1					# $t1 = $t3 mod 4
+			beqz $t1, ignore_word_al_addRel
+			li $t0, 4
+			sub $t0, $t0, $t1 # $t0 = 4 - ($t3 % 4)
+			add $t3, $t3, $t0 # $t3 += (4 - $t3 % 4)
+		ignore_word_al_addRel:
+			add $t3, $s0, $t3 # $t3 = base addr. + 36 + (total_nodes * size_of_node)
+			# Logic: $t3 + 12(curr_edge) = location to allocate for new edge
+				li $t0, 12
+				lw $t1, 20($s0) # Get curr_edge
+				mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; 12 * curr_edge
+				mflo	$t0					# copy Lo to $t0; $t0 holds product
+				add $t3, $t3, $t0 # $t3 + 12*curr_edge = location of empty edge
 
-		sw $s1, 0($t3) # Put *person1 in the first slot
-		sw $s2, 4($t3) # Put *person2 in the second slot)
+			sw $s1, 0($t3) # Put *person1 in the first slot
+			sw $s2, 4($t3) # Put *person2 in the second slot)
 
-		lw $t0, 20($s0) # Get curr_num_of_edges
-		addi $t0, $t0, 1 # Increment curr_edges by 1
-		sw $t0, 20($s0) # Update
+			lw $t0, 20($s0) # Get curr_num_of_edges
+			addi $t0, $t0, 1 # Increment curr_edges by 1
+			sw $t0, 20($s0) # Update
 
-		li $v0, 1
-		jr $ra
+			li $v0, 1
+			jr $ra
 	ret_addRelation0:
 		li $v0, 0
 		jr $ra
@@ -517,48 +513,59 @@ add_relation_property: # $s0-s5 (With Word-alignment edges)
 	move $s3, $a3 # *prop_name
 	lw $s4, 0($sp) # *prop_value
 
+	# Check if current > total
+		lw $t0, 16($s0) # Nodes -> 0
+		lw $t1, 0($s0)
+		bgt	$t0, $t1, ret_addRelProp0	# if $t0 > $t1 then ret_addRelProp0
+		bltz $t0, ret_addRelProp0 # Or if current_num_of_nodes is an invalid input
+		
+		lw $t0, 20($s0) # Edges -> 4
+		lw $t1, 4($s0)
+		bgt	$t0, $t1, ret_addRelProp0	# if $t0 > $t1 then ret_addRelProp0
+		bltz $t0, ret_addRelProp0
+
 	### CONDITION 1 ###
-	addi $sp, $sp, -16
-	sw $s0, 0($sp)
-	sw $s1, 4($sp)
-	sw $s2, 8($sp)
-	sw $ra, 12($sp)
+		addi $sp, $sp, -16
+		sw $s0, 0($sp)
+		sw $s1, 4($sp)
+		sw $s2, 8($sp)
+		sw $ra, 12($sp)
 
-	move $a0, $a0
-	move $a1, $s1
-	move $a2, $s2
-	jal is_relation_exists
+		move $a0, $a0
+		move $a1, $s1
+		move $a2, $s2
+		jal is_relation_exists
 
-	lw $s0, 0($sp)
-	lw $s1, 4($sp)
-	lw $s2, 8($sp)
-	lw $ra, 12($sp)
-	addi $sp, $sp, 16
-	beqz $v0, ret_addRelProp0 # Relation does not exist in network
-	move $s5, $v1 # $s5 has the address of the edge node
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		beqz $v0, ret_addRelProp0 # Relation does not exist in network
+		move $s5, $v1 # $s5 has the address of the edge node
 
 	### CONDITION 2 ###
-	addi $sp, $sp, -4
-	sw $ra, 0($sp)
+		addi $sp, $sp, -4
+		sw $ra, 0($sp)
 
-	move $a0, $s3 # *prop_name
-	move $a1, $s0 # *ntwrk
-	addi $a1, $a1, 29 # Goes to the FRIEND property
-	jal str_equals
+		move $a0, $s3 # *prop_name
+		move $a1, $s0 # *ntwrk
+		addi $a1, $a1, 29 # Goes to the FRIEND property
+		jal str_equals
 
-	lw $ra, 0($sp)
-	addi $sp, $sp, 4
-	beqz $v0, ret_addRelProp1
+		lw $ra, 0($sp)
+		addi $sp, $sp, 4
+		beqz $v0, ret_addRelProp1
 
 	### CONDITION 3 ###
-	bltz $s4, ret_addRelProp2
+		bltz $s4, ret_addRelProp2
 
 	### ON SUCCESS ###
-	# Change the value at offset 8 with $s4
-	sw $s4, 8($s5)
-	
-	li $v0, 1
-	jr $ra
+		# Change the value at offset 8 with $s4
+		sw $s4, 8($s5)
+		
+		li $v0, 1
+		jr $ra
 	ret_addRelProp0:
 		li $v0, 0
 		jr $ra
@@ -568,8 +575,150 @@ add_relation_property: # $s0-s5 (With Word-alignment edges)
 	ret_addRelProp2:
 		li $v0, -2
 		jr $ra
-is_friend_of_friend:
-	jr $ra
-end:
-	li $v0, 10
-	syscall
+is_friend_of_friend: # $s0-$s2; $s3-$s4
+	# int is_friend_of_friend(Network* ntwrk, char* name1, char* name2)
+	move $s0, $a0
+	move $s1, $a1
+	move $s2, $a2
+
+	# Check if current > total
+		lw $t0, 16($s0) # Nodes -> 0
+		lw $t1, 0($s0)
+		bgt	$t0, $t1, ret_isfof1	# if $t0 > $t1 then ret_isfof1
+		bltz $t0, ret_isfof1 # Or if current_num_of_nodes is an invalid input
+		
+		lw $t0, 20($s0) # Edges -> 4
+		lw $t1, 4($s0)
+		bgt	$t0, $t1, ret_isfof1	# if $t0 > $t1 then ret_isfof1
+		bltz $t0, ret_isfof1
+	
+	### 1. Convert the names into its addresses ###
+		# person1 (name1)
+		addi $sp, $sp, -16
+		sw $s0, 0($sp)
+		sw $s1, 4($sp)
+		sw $ra, 8($sp)
+		sw $s2, 12($sp)
+
+		move $a0, $s0
+		move $a1, $s1
+		jal get_person # Gets person1 (name1) address
+
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $ra, 8($sp)
+		lw $s2, 12($sp)
+		addi $sp, $sp, 16
+		beqz $v0, ret_isfof1 # person1 not found
+		move $s1, $v0 # Otherwise, store person1's addr in $s1
+
+		# person3 (name2)
+		addi $sp, $sp, -12
+		sw $s0, 0($sp)
+		sw $s1, 4($sp)
+		sw $ra, 8($sp)
+		sw $s2, 12($sp)
+
+		move $a0, $s0
+		move $a1, $s2
+		jal get_person # Gets person3 (name1) address
+
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $ra, 8($sp)
+		lw $s2, 12($sp)
+		addi $sp, $sp, 12
+		beqz $v0, ret_isfof1 # person3 not found
+		move $s2, $v0 # Otherwise, store person3's addr in $s2
+
+	### 2. Check if there is a direct relationship between person1 and person3 ###
+		addi $sp, $sp, -16
+		sw $s0, 0($sp)
+		sw $s1, 4($sp)
+		sw $s2, 8($sp)
+		sw $ra, 12($sp)
+
+		move $a0, $s0
+		move $a1, $s1
+		move $a2, $s2
+		jal is_relation_exists
+
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		bgtz $v0, ret_isfof0 # If $v0 is 1 then there is a direct relationship
+
+	### 3. Check friends-of-friends ###
+		li $s3, 0
+		loop_isfof:
+			lw $t0, 16($s0) # Get the curr_num_of_nodes
+			beq $t0, $s3, ret_isfof0 # No relationship found
+			# addr($s0) + 36 + index($s3)*size_of_node = location of person node
+			lw $t0, 8($s0) # Get size_of_node
+			mult	$t0, $s3			# $t0 * $s3 = Hi and Lo registers; index * size_of_node
+			mflo	$t0					# copy Lo to $t0; product in $t0
+			addi $t0, $t0, 36 # 36 + product
+			add $t3, $s0, $t0 # addr. + 36 + product
+			beq $t3, $s1, continue_isfof # Ignore the address of person1
+			beq $t3, $s2, continue_isfof # Ignore the address of person3
+			
+			# Otherwise, check for a relationship between person1 and person2
+				addi $sp, $sp, -20
+				sw $s0, 0($sp)
+				sw $s1, 4($sp)
+				sw $s2, 8($sp)
+				sw $ra, 12($sp)
+				sw $s3, 16($sp)
+				move $s4, $t3 # Save $t3
+
+				move $a0, $s0
+				move $a1, $s1 # *Person1
+				move $a2, $t3 # *Person2
+				jal is_relation_exists
+
+				lw $s0, 0($sp)
+				lw $s1, 4($sp)
+				lw $s2, 8($sp)
+				lw $ra, 12($sp)
+				lw $s3, 16($sp)
+				move $t3, $s4 # Restore $t3
+				addi $sp, $sp, 20
+				beqz $v0, continue_isfof # If there is no relation between person1 and person2
+	
+			# Otherwise, check for a relationship between person2 and person3
+				addi $sp, $sp, -20
+				sw $s0, 0($sp)
+				sw $s1, 4($sp)
+				sw $s2, 8($sp)
+				sw $ra, 12($sp)
+				sw $s3, 16($sp)
+				move $s4, $t3 # Save $t3
+
+				move $a0, $s0
+				move $a1, $s2 # *Person3
+				move $a2, $t3 # *Person2
+				jal is_relation_exists
+
+				lw $s0, 0($sp)
+				lw $s1, 4($sp)
+				lw $s2, 8($sp)
+				lw $ra, 12($sp)
+				lw $s3, 16($sp)
+				move $t3, $s4 # Restore $t3
+				addi $sp, $sp, 20
+				bnez $v0, ret_isfof_found # If there is a relation between person2 and person3, then person1 is a friend-of-friend of person3
+				# Otherwise, continue the loop
+			continue_isfof:
+				addi $s3, $s3, 1
+				j loop_isfof
+	ret_isfof_found:
+		li $v0, 1
+		jr $ra
+	ret_isfof0:
+		li $v0, 0
+		jr $ra
+	ret_isfof1:
+		li $v0, -1
+		jr $ra

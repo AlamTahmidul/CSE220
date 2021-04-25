@@ -20,7 +20,7 @@ Network:
 #   .byte 'J' 'a' 'n' 'e' ' ' 'D' 'o' 'e' '\0' 0 0 0 'J' 'o' 'h' 'n' ' ' 'D' 'o' 'e' '\0' 0 0 0 'O' 't' 'h' 'e' 'r' ' ' 'D' 'o' 'e' '\0' 0 0 'C' 'a' 'c' 't' 'u' 's' '\0' 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
   .byte 'J' 'a' 'n' 'e' ' ' 'D' 'o' 'e' '\0' 0 0 'J' 'o' 'h' 'n' ' ' 'D' 'o' 'e' '\0' 0 0 'O' 't' 'h' 'e' 'r' ' ' 'D' 'o' 'e' '\0' 0 'C' 'a' 'c' 't' 'u' 's' '\0' 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
    # set of edges (bytes 96 - 215)
-  .word 268501052 268501064 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  .word 268501052 268501064 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 
 #   .word 5   #total_nodes (bytes 0 - 3)
 #   .word 10  #total_edges (bytes 4- 7)
@@ -44,6 +44,7 @@ main:
 	la $a0, Network
 	# la $a1, Name1
 	# la $a2, Name2
+
 	lw $a1, 92($a0) # 96
 	lw $a2, 96($a0) # 100
 	la $a3, Frnd_prop
@@ -51,6 +52,7 @@ main:
 	li $s1, 69
 	sw $s1, 0($sp)
 	jal add_relation_property
+	addi $sp, $sp, 4
 	
 	#write test code
 	move $s0, $v0
