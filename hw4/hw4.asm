@@ -337,7 +337,7 @@ get_person: # $s0-s1
 	not_found_getPerson:
 		li $v0, 0
 		jr $ra
-is_relation_exists: # $s0-s2
+is_relation_exists: # $s0-s2 (With Word-alignment edges)
 	# int is_relation_exists(Network* ntwrk, Node* person1, Node* person2)
 	move $s0, $a0 # *ntwrk
 	move $s1, $a1 # *person1
@@ -395,11 +395,12 @@ is_relation_exists: # $s0-s2
 		j loop_relationExists
 	found_relationExists:
 		li $v0, 1
+		move $v1, $t4 # Return the address to the edge in $v1
 		jr $ra
 	not_found_relationExists:
 		li $v0, 0
 		jr $ra
-add_relation: # $s0-s2
+add_relation: # $s0-s2 (With Word-Alignment edges)
 	# int add_relation(Network* ntwrk, Node* person1, Node* person2)
 	move $s0, $a0
 	move $s1, $a1
@@ -508,17 +509,65 @@ add_relation: # $s0-s2
 	ret_addRelation3:
 		li $v0, -3
 		jr $ra
-add_relation_property: # $s0-s4 TODO: CHECK WORD-ALIGNMENT WITH EDGES
+add_relation_property: # $s0-s5 (With Word-alignment edges)
 	# int add_relation_property(Network* ntwrk, Node* person1, Node* person2, char* prop_name, int prop_value)
-	move $s0, $a0
-	move $s1, $a1
-	move $s2, $a2
-	move $s3, $a3
-	lw $s4, 0($sp)
+	move $s0, $a0 # *ntwrk
+	move $s1, $a1 # *person1
+	move $s2, $a2 # *person2
+	move $s3, $a3 # *prop_name
+	lw $s4, 0($sp) # *prop_value
 
+	### CONDITION 1 ###
+	addi $sp, $sp, -16
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $ra, 12($sp)
+
+	move $a0, $a0
+	move $a1, $s1
+	move $a2, $s2
+	jal is_relation_exists
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	beqz $v0, ret_addRelProp0 # Relation does not exist in network
+	move $s5, $v1 # $s5 has the address of the edge node
+
+	### CONDITION 2 ###
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+
+	move $a0, $s3 # *prop_name
+	move $a1, $s0 # *ntwrk
+	addi $a1, $a1, 29 # Goes to the FRIEND property
+	jal str_equals
+
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	beqz $v0, ret_addRelProp1
+
+	### CONDITION 3 ###
+	bltz $s4, ret_addRelProp2
+
+	### ON SUCCESS ###
+	# Change the value at offset 8 with $s4
+	sw $s4, 8($s5)
 	
-
+	li $v0, 1
 	jr $ra
+	ret_addRelProp0:
+		li $v0, 0
+		jr $ra
+	ret_addRelProp1:
+		li $v0, -1
+		jr $ra
+	ret_addRelProp2:
+		li $v0, -2
+		jr $ra
 is_friend_of_friend:
 	jr $ra
 end:
