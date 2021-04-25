@@ -359,9 +359,17 @@ is_relation_exists: # $s0-s2
 	lw $t1, 8($s0) # Get size_of_nodes
 	mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; total_nodes * size_of_node
 	mflo	$t0					# copy Lo to $t0; $t0 holds product
-	addi $t4, $t0, 36 # 36 + (total_nodes * size_of_node)
-	
-	add $t4, $s0, $t4 # $t4 = base_address + 36 + (total_nodes * size_of_node); beginning of the edges array
+	addi $t4, $t0, 36 # $t4 = 36 + (total_nodes * size_of_node)
+	# Logic (Word Alignment): $t4 + (4 - $t4 % 4) = next multiple of 4
+	li $t0, 4
+	div		$t4, $t0			# $t4 / $t0
+	mfhi	$t1					# $t1 = $t4 mod $t0
+	beqz $t1, ignore_word_al # The beginning address is a multiple of 4
+	li $t0, 4
+	sub		$t5, $t0, $t1		# $t5 = $t0 - $t1; $t5 = 4 - ($t4 % 4)
+	add $t4, $t4, $t5 # $t4 += $t5; $t4 = 36 + (total_nodes * size_of_node) + (4 - ($t4 % 4))
+	ignore_word_al:
+		add $t4, $s0, $t4 # $t4 = base_address + 36 + (total_nodes * size_of_node) + (4 - $t4 % 4); beginning of the edges array
 	li $t3, 0 # Counter
 	loop_relationExists:
 		lw $t0, 20($s0) # Get current number of edges
@@ -462,24 +470,32 @@ add_relation: # $s0-s2
 	mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; total_nodes * size_of_node
 	mflo	$t0					# copy Lo to $t0; $t0 holds the product
 	addi $t3, $t0, 36 # $t3 = 36 + (total_nodes * size_of_node)
-	add $t3, $s0, $t3 # $t3 = base addr. + 36 + (total_nodes * size_of_node)
-	# Logic: $t3 + 12(curr_edge) = location to allocate for new edge
+	# Logic (Word Alignment): $t3 + (4 - $t3 % 4)
+	li $t0, 4
+	div		$t3, $t0			# $t3 / $t0
+	mfhi	$t1					# $t1 = $t3 mod 4
+	beqz $t1, ignore_word_al_addRel
+	li $t0, 4
+	sub $t0, $t0, $t1 # $t0 = 4 - ($t3 % 4)
+	add $t3, $t3, $t0 # $t3 += (4 - $t3 % 4)
+	ignore_word_al_addRel:
+		add $t3, $s0, $t3 # $t3 = base addr. + 36 + (total_nodes * size_of_node)
+		# Logic: $t3 + 12(curr_edge) = location to allocate for new edge
+		li $t0, 12
+		lw $t1, 20($s0) # Get curr_edge
+		mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; 12 * curr_edge
+		mflo	$t0					# copy Lo to $t0; $t0 holds product
+		add $t3, $t3, $t0 # $t3 + 12*curr_edge = location of empty edge
 
-	li $t0, 12
-	lw $t1, 20($s0) # Get curr_edge
-	mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; 12 * curr_edge
-	mflo	$t0					# copy Lo to $t0; $t0 holds product
-	add $t3, $t3, $t0 # $t3 + 12*curr_edge = location of empty edge
+		sw $s1, 0($t3) # Put *person1 in the first slot
+		sw $s2, 4($t3) # Put *person2 in the second slot)
 
-	sw $s1, 0($t3) # Put *person1 in the first slot
-	sw $s2, 4($t3) # Put *person2 in the second slot
+		lw $t0, 20($s0) # Get curr_num_of_edges
+		addi $t0, $t0, 1 # Increment curr_edges by 1
+		sw $t0, 20($s0) # Update
 
-	lw $t0, 20($s0) # Get curr_num_of_edges
-	addi $t0, $t0, 1 # Increment curr_edges by 1
-	sw $t0, 20($s0) # Update
-
-	li $v0, 1
-	jr $ra
+		li $v0, 1
+		jr $ra
 	ret_addRelation0:
 		li $v0, 0
 		jr $ra
@@ -492,7 +508,16 @@ add_relation: # $s0-s2
 	ret_addRelation3:
 		li $v0, -3
 		jr $ra
-add_relation_property:
+add_relation_property: # $s0-s4 TODO: CHECK WORD-ALIGNMENT WITH EDGES
+	# int add_relation_property(Network* ntwrk, Node* person1, Node* person2, char* prop_name, int prop_value)
+	move $s0, $a0
+	move $s1, $a1
+	move $s2, $a2
+	move $s3, $a3
+	lw $s4, 0($sp)
+
+	
+
 	jr $ra
 is_friend_of_friend:
 	jr $ra

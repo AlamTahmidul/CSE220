@@ -9,16 +9,16 @@ Name_prop: .asciiz "NAME"
 Network:
   .word 5   #total_nodes (bytes 0 - 3)
   .word 10  #total_edges (bytes 4- 7)
-  .word 12  #size_of_node (bytes 8 - 11)
+  .word 11  #size_of_node (bytes 8 - 11)
   .word 12  #size_of_edge (bytes 12 - 15)
   .word 4   #curr_num_of_nodes (bytes 16 - 19)
   .word 2   #curr_num_of_edges (bytes 20 - 23)
   .asciiz "NAME" # Name property (bytes 24 - 28)
   .asciiz "FRIEND" # FRIEND property (bytes 29 - 35)
    # nodes (bytes 36 - 95)	
-  .byte 'J' 'a' 'n' 'e' ' ' 'D' 'o' 'e' '\0' 0 0 0 'J' 'o' 'h' 'n' ' ' 'D' 'o' 'e' '\0' 0 0 0 'O' 't' 'h' 'e' 'r' ' ' 'D' 'o' 'e' '\0' 0 0 'C' 'a' 'c' 't' 'u' 's' '\0' 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  .byte 'J' 'a' 'n' 'e' ' ' 'D' 'o' 'e' '\0' 0 0 'J' 'o' 'h' 'n' ' ' 'D' 'o' 'e' '\0' 0 0 'O' 't' 'h' 'e' 'r' ' ' 'D' 'o' 'e' '\0' 0 'C' 'a' 'c' 't' 'u' 's' '\0' 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
    # set of edges (bytes 96 - 215)
-  .word 1 2 268501052 268501064 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  .word 1 2 0 268501052 268501064 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
   # Jane Doe and John Doe are related
 
 .text:
