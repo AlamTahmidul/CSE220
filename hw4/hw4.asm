@@ -102,7 +102,7 @@ create_person: # $s0 = *network
 	cp_full_nodes:
 		li $v0, -1 # Nodes are full
 		jr $ra
-is_person_exists: # $s0 = *ntwrk, $s1 = person
+is_person_exists: # $s0 = *ntwrk, $s1 = *person
 	# int is_person_exists(Network* ntwrk, Node* person)
 	move $s0, $a0
 	move $s1, $a1 # Person
@@ -372,17 +372,17 @@ is_relation_exists: # $s0-s2
 		beqz $t0, not_found_relationExists # If there is an entry that is 0, then there are no more relationships?
 		beqz $t1, not_found_relationExists # If there is an entry that is 0, then there are no more relationships?
 
-		seq $t2, $t0, $s1 # if the first of the pair is *person1
-		seq $t5, $t1, $s2 # if the second of the pair is *person2
+		seq $t2, $t0, $s1 # if the first is *person1
+		seq $t5, $t1, $s2 # if the second is *person2
 		and $t2, $t2, $t5 # If *person1 and *person2 then 1 otherwise 0
 		bnez $t2, found_relationExists # There is a relationship
 
-		seq $t2, $t0, $s2 # if the first of the pair is *person2
-		seq $t5, $t1, $s1 # if the second of the pair is *person1
+		seq $t2, $t0, $s2 # if the first is *person2
+		seq $t5, $t1, $s1 # if the second is *person1
 		and $t2, $t2, $t5 # If *person2 and *person1 then 1 otherwise 0
 		bnez $t2, found_relationExists # There is a relationship
 
-		addi $t4, $t4, 8 # Go to the next pair
+		addi $t4, $t4, 12 # Go to the next Edge
 		addi $t3, $t3, 1 # Increment counter
 		j loop_relationExists
 	found_relationExists:
@@ -391,9 +391,107 @@ is_relation_exists: # $s0-s2
 	not_found_relationExists:
 		li $v0, 0
 		jr $ra
-add_relation:
+add_relation: # $s0-s2
+	# int add_relation(Network* ntwrk, Node* person1, Node* person2)
+	move $s0, $a0
+	move $s1, $a1
+	move $s2, $a2
+
+	### CONDITION 1 ###
+	addi $sp, $sp, -12
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $ra, 8($sp)
+
+	move $a0, $s0
+	move $a1, $s1
+	jal is_person_exists
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	beqz $v0, ret_addRelation0  # *person1 does not exist
+
+	addi $sp, $sp, -12
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $ra, 8($sp)
+
+	move $a0, $s0
+	move $a1, $s2
+	jal is_person_exists
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	beqz $v0, ret_addRelation0  # *person2 does not exist
+
+	### CONDITION 2 ###
+	lw $t0, 20($s0) # Get current number of edges
+	lw $t1, 4($s0) # Get total number of edges
+	bge $t0, $t1, ret_addRelation1 # if curr_num_of_edges >= total_edges then err
+	bltz $t0, ret_addRelation1 # If negative number of edges
+
+	### CONDITION 3 ###
+	addi $sp, $sp, -16
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $ra, 12($sp)
+
+	move $a0, $s0
+	move $a1, $s1
+	move $a2, $s2
+	jal is_relation_exists # returns 1 if they are already related
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	bnez $v0, ret_addRelation2 # *person1 and *person2 are already related
 	
+	### CONDITION 4 ###
+	beq $s1, $s2, ret_addRelation3 # *person1 == *person2 (itself)
+
+	### ON SUCCESS ###
+	lw $t0, 0($s0) # Get total_nodes
+	lw $t1, 8($s0) # Get size_of_node
+	mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; total_nodes * size_of_node
+	mflo	$t0					# copy Lo to $t0; $t0 holds the product
+	addi $t3, $t0, 36 # $t3 = 36 + (total_nodes * size_of_node)
+	add $t3, $s0, $t3 # $t3 = base addr. + 36 + (total_nodes * size_of_node)
+	# Logic: $t3 + 12(curr_edge) = location to allocate for new edge
+
+	li $t0, 12
+	lw $t1, 20($s0) # Get curr_edge
+	mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers; 12 * curr_edge
+	mflo	$t0					# copy Lo to $t0; $t0 holds product
+	add $t3, $t3, $t0 # $t3 + 12*curr_edge = location of empty edge
+
+	sw $s1, 0($t3) # Put *person1 in the first slot
+	sw $s2, 4($t3) # Put *person2 in the second slot
+
+	lw $t0, 20($s0) # Get curr_num_of_edges
+	addi $t0, $t0, 1 # Increment curr_edges by 1
+	sw $t0, 20($s0) # Update
+
+	li $v0, 1
 	jr $ra
+	ret_addRelation0:
+		li $v0, 0
+		jr $ra
+	ret_addRelation1:
+		li $v0, -1
+		jr $ra
+	ret_addRelation2:
+		li $v0, -2
+		jr $ra
+	ret_addRelation3:
+		li $v0, -3
+		jr $ra
 add_relation_property:
 	jr $ra
 is_friend_of_friend:
