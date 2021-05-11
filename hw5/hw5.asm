@@ -90,19 +90,33 @@ add_N_terms_to_polynomial: # Uses $s0-s3
 	move $s2, $a2 # Copy N
 	li $s3, 0 # Number of terms properly added
 	loop_addNPoly:
-		lw $t0, 0($s1) # Coefficient
-		seq $t1, $t0, $0 # If Coefficient is 0
-		lw $t0, 4($s1) # Exponent
-		li $t3, -1
-		seq $t2, $t0, $t3 # If exp is -1
-		and $t0, $t1, $t2 # If coeff = 0 and exp = -1
-		bltz $t0, end_loop_addNPoly # Exit the loop
+		## Exit the Loop Condition ##
+			beqz $s2, 0, end_loop_addNPoly # If there are no more terms left to iterate
+			lw $t0, 0($s1) # Coefficient
+			seq $t1, $t0, $0 # If Coefficient is 0
+			lw $t0, 4($s1) # Exponent
+			li $t3, -1
+			seq $t2, $t0, $t3 # If exp is -1
+			and $t0, $t1, $t2 # If coeff = 0 and exp = -1
+			bltz $t0, end_loop_addNPoly # Exit the loop
+			## End ##
 
-		
-
-		j loop_addNPoly
+		## Conditions to Skip ##
+			# If there is an invalid coeff or exp
+			lw $t0, 0($s1) # Coefficient
+			blez $t0, continue_loop_addNPoly
+			lw $t0, 4($s1) # Exponent
+			blez $t0, continue_loop_addNPoly
+			## End ##
+		## Continue as Planned ##
+			addi $s2, $s2, -1 # Decrease the number of terms to add
+			addi $s3, $s3, 1 # Increment the number of terms added
+		## Continue the loop ##
+			continue_loop_addNPoly:
+				addi $s1, $s1, 8 # Go to the next pair
+				j loop_addNPoly # Jump back to the loop
+				## End
 	end_loop_addNPoly:
-
 		lw $s0, 0($sp)
 		lw $s1, 4($sp)
 		lw $s2, 8($sp)
