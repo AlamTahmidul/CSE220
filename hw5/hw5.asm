@@ -9,8 +9,8 @@ create_term: # Uses $s0
 	sw $s0, 0($sp) # Preserve the value for $s0
 
 	### PRECONDITIONS ###
-	blez $a0, create_term_err
-	blez $a1, create_term_err
+	blez $a0, create_term_err # Coeff <= 0
+	bltz $a1, create_term_err # Exp < 0
 
 	move $s0, $a0
 	li $a0, 12 # Allocate 12 bytes of memory
@@ -110,7 +110,7 @@ add_N_terms_to_polynomial: # Uses $s0-s4
 			lw $t0, 0($s1) # Coefficient
 			blez $t0, continue_loop_addNPoly
 			lw $t0, 4($s1) # Exponent
-			blez $t0, continue_loop_addNPoly
+			bltz $t0, continue_loop_addNPoly
 			## End ##
 		## Continue as Planned ##
 			lw $t3, 0($s0) # Get the address to head_term
@@ -197,7 +197,7 @@ add_N_terms_to_polynomial: # Uses $s0-s4
 		lw $s4, 20($sp)
 		addi $sp, $sp, 24 # Deallocate
 		jr $ra
-update_N_terms_in_polynomial:
+update_N_terms_in_polynomial: # TODO: Return Value in the case with exp = 0
 	# int update_N_terms_in_polynomial(Polynomial* p, int[] terms, N)
 	addi $sp, $sp, -20
 	sw $s0, 0($sp)
@@ -219,7 +219,7 @@ update_N_terms_in_polynomial:
 	li $v0, 9
 	syscall # Allocate memory for Terms visited
 	move $t3, $v0 # Create a copy of the address (check for visited terms)
-	loop_updateNPoly: # TODO: Increment number of terms updated
+	loop_updateNPoly:
 		## Check Exit Conditions ##
 			blez $s2, exit_loop_updateNPoly # N < arr.length
 			lw $t0, 0($s1) # Coeff
@@ -235,7 +235,7 @@ update_N_terms_in_polynomial:
 				lw $t0, 0($s1) # Coeff in terms[]
 				blez $t0, continue_loop_updateNPoly # Invalid coeff (skip)
 				lw $t0, 4($s1) # exp in terms[]
-				blez $t0, continue_loop_updateNPoly # Invalid exp (skip)
+				bltz $t0, continue_loop_updateNPoly # Invalid exp (skip)
 				## End ##
 			lw $t4, 4($s1) # Get the exponent in terms[]
 
@@ -247,21 +247,28 @@ update_N_terms_in_polynomial:
 				beq $t4, $t5, ll_visit_update # If the exponents match, check if the term has been updated already
 				j continue_llTrav # otherwise, go to the next pointer in linked list
 				ll_visit_update:
+
 					lw $t0, 0($t3) # Get the exp stored in heap
-					beq $t0, $t5, exit_llVisit # If the exp has been visited, don't increment counter (change coeff again)
 					beqz $t0, increment_update # If the exp has not been visited then increment counter
+					beq $t0, $t5, exit_llVisit # If the exp has been visited, don't increment counter (change coeff again)
 
 					addi $t3, $t3, 4 # Go to the next saved slot
 					j ll_visit_update # Iterate over visited exp
 				increment_update:
 					addi $s3, $s3, 1 # Increment number of terms updated
-					sw $t5, 0($t3) # Save the exp in heap
-					j exit_llVisit # Change coefficient
+
+					beqz $t5, zero_exponent_update # Exponent is 0
+					sw $t5, 0($t3) # Save the exp in heap; exp > 0
+					j exit_llVisit
+					zero_exponent_update:
+						li $t0, -1
+						sw $t0, 0($t3) # Store -1 as 0
+						j exit_llVisit # Change coefficient
 				continue_llTrav:
 					lw $t0, 8($s0) # Get next pointer in linked_list
 					beqz $t0, continue_loop_updateNPoly # Term has not been found (exp. does not exist); go to next pair of terms
 					lw $s0, 8($s0) # Go to next pointer
-					j ll_updateNPoly # Go to next 
+					j ll_updateNPoly # Go to next ptr
 				exit_llVisit: # Update the coeff in $s0
 					lw $t0, 0($s1) # Get the coefficient in terms[]
 					sw $t0, 0($s0) # Update the coeff in linked list
@@ -293,8 +300,40 @@ update_N_terms_in_polynomial:
 		jr $ra
 get_Nth_term:
 	# (int,int) get_Nth_term(Polynomial* p, N)
-	
-	jr $ra
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
+
+	### Preconditions ###
+		lw $t0, 0($a0)
+		blez $t0, err_getN
+		move $t0, $a1 
+		blez $t0, err_getN
+		### End ###
+
+	### Main Body ###
+		li $t3, 1 # Highest Order
+		lw $s0, 0($a0) # $s0 has a valid pointer
+		loop_getN:
+			beq $a1, $t3, exit_loop_getN # Found the nth highest order
+			
+			lw $s0, 8($s0) # Get the next pointer
+			beqz $s0, err_getN # If the pointer is 0, then there is no coeff/exp pair in linked list
+			addi $t3, $t3, 1
+			j loop_getN
+		exit_loop_getN:
+			# $s0 contains the pointer to nth higest order
+			lw $v0, 4($s0) # Exponent
+			lw $v1, 0($s0) # Coefficient
+			lw $s0, 0($sp)
+			addi $sp, $sp, 4
+			jr $ra
+		### End ###
+	err_getN:
+		li $v0, -1 # Exp not found
+		li $v1, 0 # Coeff not found
+		lw $s0, 0($sp)
+		addi $sp, $sp, 4
+		jr $ra
 remove_Nth_term:
 	# (int,int) remove_Nth_term(Polynomial* p, N)
 

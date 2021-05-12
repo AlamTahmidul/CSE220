@@ -1,9 +1,9 @@
 .data
 pair: .word 12 8
-terms: .word 16 5 1 8 0 -1
+terms: .word 16 5 1 0 0 -1
 p: .word 0
 N: .word 3
-N1: .word 1
+N1: .word 4
 
 .text:
 main:
@@ -21,6 +21,17 @@ main:
     jal get_Nth_term
 
     #write test code
+    move $a0, $v0
+    li $v0, 1
+    syscall
+
+    li $a0, ' '
+    li $v0, 11
+    syscall
+
+    move $a0, $v1
+    li $v0, 1
+    syscall
 
     li $v0, 10
     syscall
