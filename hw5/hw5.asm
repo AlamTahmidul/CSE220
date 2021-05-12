@@ -9,7 +9,7 @@ create_term: # Uses $s0
 	sw $s0, 0($sp) # Preserve the value for $s0
 
 	### PRECONDITIONS ###
-	blez $a0, create_term_err # Coeff <= 0
+	beqz $a0, create_term_err # Coeff == 0
 	bltz $a1, create_term_err # Exp < 0
 
 	move $s0, $a0
@@ -36,13 +36,6 @@ init_polynomial: # Uses $s0-s2
 	sw $s1, 4($sp)
 	sw $s2, 8($sp)
 	sw $ra, 12($sp)
-
-	# lw $a0, 0($a1)
-	# li $v0, 1
-	# syscall
-	# move $a0, $s1
-	# li $v0, 11
-	# syscall
 
 	### PRECONDITIONS ###
 	bltz $a0, init_polynomial_err # Not a valid pointer
@@ -108,9 +101,9 @@ add_N_terms_to_polynomial: # Uses $s0-s4
 		## Conditions to Skip ##
 			# If there is an invalid coeff or exp
 			lw $t0, 0($s1) # Coefficient
-			blez $t0, continue_loop_addNPoly
+			beqz $t0, continue_loop_addNPoly # Coeff == 0
 			lw $t0, 4($s1) # Exponent
-			bltz $t0, continue_loop_addNPoly
+			bltz $t0, continue_loop_addNPoly # Exp < 1
 			## End ##
 		## Continue as Planned ##
 			lw $t3, 0($s0) # Get the address to head_term
@@ -233,9 +226,9 @@ update_N_terms_in_polynomial:
 		## Iterate over the linked list ##
 			## Check for invalid terms[] ##
 				lw $t0, 0($s1) # Coeff in terms[]
-				blez $t0, continue_loop_updateNPoly # Invalid coeff (skip)
+				beqz $t0, continue_loop_updateNPoly # Invalid coeff == 0(skip)
 				lw $t0, 4($s1) # exp in terms[]
-				bltz $t0, continue_loop_updateNPoly # Invalid exp (skip)
+				bltz $t0, continue_loop_updateNPoly # Invalid exp < 0 (skip)
 				## End ##
 			lw $t4, 4($s1) # Get the exponent in terms[]
 
@@ -305,9 +298,9 @@ get_Nth_term:
 
 	### Preconditions ###
 		lw $t0, 0($a0)
-		blez $t0, err_getN
+		blez $t0, err_getN # Invalid *p <= 0
 		move $t0, $a1 
-		blez $t0, err_getN
+		blez $t0, err_getN # Invalid N <= 0
 		### End ###
 
 	### Main Body ###
@@ -382,11 +375,190 @@ remove_Nth_term:
 		jr $ra
 add_poly:
 	# int add_poly(Polynomial* p, Polynomial* q, Polynomial* r)
+	addi $sp, $sp, -16
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $ra, 12($sp)
 
+	lw $s0, 0($a0)
+	lw $s1, 0($a1)
+	move $s2, $a2
+	move $t8, $s2 # Copy of *r
+	sw $0, 0($s2) # Make sure that *r is empty
 	### PRECONDITIONS ###
-	
+		beqz $s0, err_add_poly
+		beqz $s1, err_add_poly
+		beqz $s2, err_add_poly
+		lw $t0, 0($s0) # Get head for *p
+		lw $t1, 0($s1) # Get head for *q
+		seq $t0, $t0, $0 # *p == 0
+		seq $t1, $t1, $0 # *q == 0
+		and $t0, $t0, $t1 # *p == 0 && *q == 0
+		bgtz $t0, both_empty_add # if p and q are empty
+		lw $t0, 0($s0) # Get head for *p
+		beqz $t0, p_empty_addQ
+		lw $t0, 0($s1) # Get head for *q
+		beqz $t0, q_empty_addP
+		### END ###
+	### MAIN BODY ###
+		# lw $s0, 0($s0) # copy head of *p
+		# lw $s1, 0($s1) # copy head of *q
+		# lw $s2, 0($s2) # copy head of *r
+		loop_addPoly:
+			beqz $s0, exit_loop_addPoly # *p has no more iterations
+			beqz $s1, exit_loop_addPoly # *q has no more iterations
 
+			lw $t0, 4($s0) # exp (for p)
+			lw $t1, 4($s1) # exp (for q)
+					# move $a0, $t0
+					# li $v0, 1
+					# syscall
+					# li $v0, 10
+					# syscall
+			bgt $t0, $t1, greaterP_add
+			blt $t0, $t1, greaterQ_add
+			# Same power
+				# 1. add coeffcients
+					lw $t0, 0($s0) # Coeff of p
+					lw $t1, 0($s1) # Coeff of q
+					add $t0, $t0, $t1 # Sum of coeff
+				# 2. if sum != 0 then add to *r
+					beqz $t0, ignroe_sumAdd # sum == 0 then ignore
+					move $a0, $t0 # Sum
+					lw $a1, 4($s0) # Exponent
+					jal create_term # $v0 holds the address to term
+					lw $t0, 0($t8) # Check if head exists
+					beqz $t0, add_head
+					# Otherwise, append to *r
+					sw $v0, 8($s2)
+					lw $s2, 8($s2) # Go to next ptr in *r
+				# 3. get next ptr to *p and *q
+					lw $s0, 8($s0) # Get the next ptr in *p
+					lw $s1, 8($s1) # Get the next ptr in *q
+					j cont_loop_addPoly
+				add_head:
+					sw $v0, 0($t8) # Set the head of *r to current term in *p
+
+					lw $s2, 0($t8) # Make copy of *r jump to the head
+					lw $s0, 8($s0) # Get next ptr to p
+					lw $s1, 8($s1) # Get next ptr to q
+					j cont_loop_addPoly
+				ignroe_sumAdd:
+					lw $s0, 8($s0) # Get next ptr to p
+					lw $s1, 8($s1) # Get next ptr to q
+			cont_loop_addPoly:
+				j loop_addPoly
+			greaterP_add: # TODO
+				lw $t0, 0($t8) # Gets the head of *r
+				beqz $t0, greaterP_add_head # Head is empty for *r
+				# Otherwise, append to *r
+				lw $a0, 0($s0) # Coeff for p
+				lw $a1, 4($s0) # Exponent for p
+				jal create_term # $v0 has addr to term
+
+				sw $v0, 8($s2) # Store address to next
+
+				lw $s0, 8($s0) # Get the next ptr in *p
+				lw $s2, 8($s2) # Go to the next ptr in copy of *r
+				j cont_loop_addPoly
+				greaterP_add_head:
+					lw $a0, 0($s0) # Coeff
+					lw $a1, 4($s0) # Exponent
+					jal create_term # $v0 has addr to term
+
+					sw $v0, 0($t8) # Set the head of *r to current term in *p
+
+					lw $s2, 0($t8) # Make copy of *r jump to the head
+					lw $s0, 8($s0) # Get the next ptr in *p
+					j cont_loop_addPoly
+			greaterQ_add: # TODO
+				lw $t0, 0($t8) # Gets the head of *r
+				beqz $t0, greaterQ_add_head # Head is empty for *r
+				# Otherwise append to *r
+				lw $a0, 0($s1) # Coeff for q
+				lw $a1, 4($s1) # Exponent for q
+				jal create_term # $v0 has addr to term
+
+				sw $v0, 8($s2) # Store address to next
+
+				lw $s1, 8($s1) # Get the next ptr in *q
+				lw $s2, 8($s2) # Go to the next ptr in copy of *r
+				j cont_loop_addPoly
+				greaterQ_add_head:
+					lw $a0, 0($s1) # Coeff for q
+					lw $a1, 4($s1) # Exponent for q
+					jal create_term # $v0 has addr to term
+
+					sw $v0, 0($t8) # Set the head of *r to current term in *q
+
+					lw $s2, 0($t8) # Make copy *r jump to the head
+					lw $s1, 8($s1) # Get the next ptr in *q
+					j cont_loop_addPoly
+		exit_loop_addPoly: # TODO
+			loop_p_add:
+				beqz $s0, end_loop_p_add # No more iterations of *p
+				lw $a0, 0($s0)
+				lw $a1, 4($s0)
+				jal create_term
+				sw $v0, 8($s2) # Append the term in *r
+				lw $s2, 8($s2) # Jump to next *r
+				lw $s0, 8($s0) # jump to next *p
+				j loop_p_add
+			end_loop_p_add:
+			loop_q_add:
+				beqz $s1, end_loop_q_add # No more iterations of *q
+				lw $a0, 0($s1)
+				lw $a1, 4($s1)
+				jal create_term
+				sw $v0, 8($s2) # Append the term in *r
+				lw $s2, 8($s2) # Jump to next *r
+				lw $s1, 8($s1) # jump to next *q
+				j loop_q_add
+			end_loop_q_add:
+		### END ###
+	lw $t0, 0($t8) # If there are no valid terms
+	beqz $t0, err_add_poly
+
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	li $v0, 1 # Valid terms exist
 	jr $ra
+	err_add_poly:
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		li $v0, 0
+		jr $ra
+	p_empty_addQ:
+		lw $t0, 0($s1)
+		sw $t0, 0($s2)
+		li $v0, 1
+
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		jr $ra
+	q_empty_addP:
+		lw $t0, 0($s0)
+		sw $t0, 0($s2)
+		li $v0, 1
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		jr $ra
+	both_empty_add:
+		li $v0, 0
+		jr $ra
 mult_poly:
 	# int mult_poly(Polynomial* p, Polynomial* q, Polynomial* r)
 	

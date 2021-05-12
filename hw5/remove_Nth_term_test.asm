@@ -1,10 +1,10 @@
 # head -> (12,8,term0) -> (16,5,0)
 .data
-pair: .word 12 8
+pair: .word -12 8
 terms: .word 16 5 1 8 4 3 1 0 0 -1
 p: .word 0
 N: .word 4
-N1: .word 3
+N1: .word 1
 
 .text:
 main:
@@ -40,8 +40,8 @@ main:
 
     la $t0, p
     lw $t0, 0($t0) # Go to head
-    lw $t0, 8($t0) # Go to 2nd element
-    lw $t0, 8($t0) # Go to 3rd element
+    # lw $t0, 8($t0) # Go to 2nd element
+    # lw $t0, 8($t0) # Go to 3rd element
 
     lw $a0, 0($t0)
     li $v0, 1
