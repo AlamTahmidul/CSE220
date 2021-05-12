@@ -159,7 +159,8 @@ add_N_terms_to_polynomial: # Uses $s0-s4
 						move $a0, $t0 # Coeff
 						move $a1, $t1 # Exponent
 						jal create_term # $v0 contains address to term
-						
+
+
 						# $v0 points to next, prev. points to $v0
 						sw $s4, 8($v0)
 						sw $v0, 8($t9)
@@ -170,6 +171,7 @@ add_N_terms_to_polynomial: # Uses $s0-s4
 							lw $t1, 4($s1) # Exponent
 							move $a0, $t0 # Coeff
 							move $a1, $t1 # Exponent
+
 							jal create_term # $v0 contains address to term
 
 							sw $s4, 8($v0) # Current term is after $v0 ($v0 is the new header)
@@ -197,10 +199,101 @@ add_N_terms_to_polynomial: # Uses $s0-s4
 		jr $ra
 update_N_terms_in_polynomial:
 	# int update_N_terms_in_polynomial(Polynomial* p, int[] terms, N)
-	jr $ra
+	addi $sp, $sp, -20
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	sw $s4, 16($sp)
+
+	li $s3, 0 # Number of terms updated
+	lw $s0, 0($a0) # Copy addr. to head_term
+	move $t6, $s0
+	blez $s0, error_updateNPoly # Address at 0 or neg is an error
+	move $s1, $a1 # Copy terms[]
+	blez $s1, error_updateNPoly # Address at 0 or negative is an error
+	move $s2, $a2 # Copy N
+	blez $s2, error_updateNPoly # 0 or less terms for N is an error
+
+	li $a0, 200
+	li $v0, 9
+	syscall # Allocate memory for Terms visited
+	move $t3, $v0 # Create a copy of the address (check for visited terms)
+	loop_updateNPoly: # TODO: Increment number of terms updated
+		## Check Exit Conditions ##
+			blez $s2, exit_loop_updateNPoly # N < arr.length
+			lw $t0, 0($s1) # Coeff
+			seq $t1, $t0, $0 # coeff == 0
+			lw $t2, 4($s1) # Exp
+			li $t0, -1
+			seq $t2, $t0, $t2 # exp == -1
+			and $t0, $t1, $t2 # coeff == 0 && exp == -1
+			bgtz $t0, exit_loop_updateNPoly # Exit on pair
+			## End ##
+		## Iterate over the linked list ##
+			## Check for invalid terms[] ##
+				lw $t0, 0($s1) # Coeff in terms[]
+				blez $t0, continue_loop_updateNPoly # Invalid coeff (skip)
+				lw $t0, 4($s1) # exp in terms[]
+				blez $t0, continue_loop_updateNPoly # Invalid exp (skip)
+				## End ##
+			lw $t4, 4($s1) # Get the exponent in terms[]
+
+			move $s0, $t6 # Go to head_term
+			move $t3, $v0 # Reset the heap counter to beginning
+			ll_updateNPoly: # Linked List traversal
+				lw $t5, 4($s0) # Get the exponent in linked list
+
+				beq $t4, $t5, ll_visit_update # If the exponents match, check if the term has been updated already
+				j continue_llTrav # otherwise, go to the next pointer in linked list
+				ll_visit_update:
+					lw $t0, 0($t3) # Get the exp stored in heap
+					beq $t0, $t5, exit_llVisit # If the exp has been visited, don't increment counter (change coeff again)
+					beqz $t0, increment_update # If the exp has not been visited then increment counter
+
+					addi $t3, $t3, 4 # Go to the next saved slot
+					j ll_visit_update # Iterate over visited exp
+				increment_update:
+					addi $s3, $s3, 1 # Increment number of terms updated
+					sw $t5, 0($t3) # Save the exp in heap
+					j exit_llVisit # Change coefficient
+				continue_llTrav:
+					lw $t0, 8($s0) # Get next pointer in linked_list
+					beqz $t0, continue_loop_updateNPoly # Term has not been found (exp. does not exist); go to next pair of terms
+					lw $s0, 8($s0) # Go to next pointer
+					j ll_updateNPoly # Go to next 
+				exit_llVisit: # Update the coeff in $s0
+					lw $t0, 0($s1) # Get the coefficient in terms[]
+					sw $t0, 0($s0) # Update the coeff in linked list
+					j continue_loop_updateNPoly
+			## End ##
+		## Continue the loop ##
+			continue_loop_updateNPoly:
+				addi $s1, $s1, 8 # Go to the next term pair
+				addi $s2, $s2, -1 # Decrement the number of counters
+				j loop_updateNPoly
+			## End ##
+	exit_loop_updateNPoly:
+		move $v0, $s3
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		lw $s4, 16($sp)
+		addi $sp, $sp, 20
+		jr $ra
+	error_updateNPoly:
+		move $v0, $s3
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		lw $s4, 16($sp)
+		addi $sp, $sp, 20
+		jr $ra
 get_Nth_term:
 	# (int,int) get_Nth_term(Polynomial* p, N)
-
+	
 	jr $ra
 remove_Nth_term:
 	# (int,int) remove_Nth_term(Polynomial* p, N)

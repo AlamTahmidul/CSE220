@@ -1,6 +1,6 @@
 .data
 pair: .word 12 8
-terms: .word 16 5 1 7 0 -1
+terms: .word 16 7 14 10 -3 -2 0 -1
 p: .word 0
 N: .word 3
 
@@ -20,10 +20,14 @@ main:
     # li $v0, 1
     # syscall
 
-    la $t0, pair
-    lw $a0, 20($t0)
+    la $t0, p
+    lw $t0, 0($t0) # Get Head Address
+
+    # # lw $t0, 8($t0) # Get Next pointer
+    lw $a0, 4($t0) # Get coeff
     li $v0, 1
     syscall
+
 
     li $v0, 10
     syscall
