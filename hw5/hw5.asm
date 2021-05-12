@@ -197,7 +197,7 @@ add_N_terms_to_polynomial: # Uses $s0-s4
 		lw $s4, 20($sp)
 		addi $sp, $sp, 24 # Deallocate
 		jr $ra
-update_N_terms_in_polynomial: # TODO: Return Value in the case with exp = 0
+update_N_terms_in_polynomial:
 	# int update_N_terms_in_polynomial(Polynomial* p, int[] terms, N)
 	addi $sp, $sp, -20
 	sw $s0, 0($sp)
@@ -336,13 +336,60 @@ get_Nth_term:
 		jr $ra
 remove_Nth_term:
 	# (int,int) remove_Nth_term(Polynomial* p, N)
+	addi $sp, $sp, -4
+	sw $s0, 0($sp)
 
-	jr $ra
+	### Preconditions ###
+		blez $a0, err_rem # Invalid Pointer
+		blez $a1, err_rem # Invalid Number
+		### End ###
+
+	### MAIN BODY ###
+		lw $s0, 0($a0) # Valid Pointer
+		move $t4, $s0 # Previous = addr. of head_term
+		li $t5, 1 # Starting at the highest nth term
+		loop_rem:
+			beq $t5, $a1, exit_loop_rem # Found nth highest
+			
+			move $t4, $s0 # previous ptr
+			lw $s0, 8($s0) # Get next pointer
+			beqz $s0, err_rem # nth highest exponent not found
+			addi $t5, $t5, 1 # Increment counter
+			j loop_rem
+		exit_loop_rem:
+			# prev.next = current.next; $t4 = previous, $s0 = current
+			lw $t0, 8($s0) # current.next
+			sw $t0, 8($t4) # previous.next = current.next
+			lw $v0, 4($s0) # Prepare to return exp
+			lw $v1, 0($s0) # Prepare to return coeff
+
+			li $t0, 1
+			beq $t0, $t5, change_head_rem # Previous points to the head_term
+			j ignore_change_head
+			change_head_rem:
+				lw $t0, 8($s0) # current.next
+				sw $t0, 0($a0) # Update the head
+			ignore_change_head:
+				lw $s0, 0($sp)
+				addi $sp, $sp, 4
+				jr $ra
+		### END ###
+	err_rem:
+		li $v0, -1 # Exponent not found
+		li $v1, 0 # Coeff not found
+		lw $s0, 0($sp)
+		addi $sp, $sp, 4
+		jr $ra
 add_poly:
 	# int add_poly(Polynomial* p, Polynomial* q, Polynomial* r)
+
+	### PRECONDITIONS ###
+	
 
 	jr $ra
 mult_poly:
 	# int mult_poly(Polynomial* p, Polynomial* q, Polynomial* r)
 	
 	jr $ra
+sort_linked_list:
+	# void sort(Polynomial *p)
