@@ -1,6 +1,6 @@
 .data
 pair: .word 12 8
-terms: .word 16 5 1 8 0 -1
+terms: .word 16 5 1 7 0 -1
 p: .word 0
 N: .word 3
 
@@ -16,6 +16,14 @@ main:
     jal add_N_terms_to_polynomial
 
     #write test code
+    # move $a0, $v0
+    # li $v0, 1
+    # syscall
+
+    la $t0, pair
+    lw $a0, 20($t0)
+    li $v0, 1
+    syscall
 
     li $v0, 10
     syscall
