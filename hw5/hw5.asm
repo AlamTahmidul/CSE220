@@ -667,11 +667,20 @@ mult_poly:
 				addi $t5, $t5, -1 # Decrease the number of iterations
 				j loop_mult_comb1
 			exit_loop_mult_comb1:
-				# TODO
+				# TODO: call the add n terms to polynomial func
+				move $a0, $s2 # Pass in *r
+				move $a1, $sp # int[] terms
+				move $a2, $t6 # Number of terms to add
+				move $t7, $t6 # Copy a value of $t6
+				jal add_N_terms_to_polynomial
+				sll $t7, $t7, 3 # Multiply by 8 (since word is 4 bytes)
+				add $sp, $sp, $t7 # Deallocate stack
+				addi $sp, $sp, 8 # Deallocate stack
+				
+				beqz $v0, err_mult_poly # No terms were added
 		### END ###
 	
 		li $v0, 1
-		li $v0, 0
 		lw $s0, 0($sp)
 		lw $s1, 4($sp)
 		lw $s2, 8($sp)
