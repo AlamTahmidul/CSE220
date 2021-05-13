@@ -103,7 +103,7 @@ add_N_terms_to_polynomial: # Uses $s0-s4
 			lw $t0, 0($s1) # Coefficient
 			beqz $t0, continue_loop_addNPoly # Coeff == 0
 			lw $t0, 4($s1) # Exponent
-			bltz $t0, continue_loop_addNPoly # Exp < 1
+			bltz $t0, continue_loop_addNPoly # Exp < 0
 			## End ##
 		## Continue as Planned ##
 			lw $t3, 0($s0) # Get the address to head_term
@@ -381,8 +381,8 @@ add_poly:
 	sw $s2, 8($sp)
 	sw $ra, 12($sp)
 
-	lw $s0, 0($a0)
-	lw $s1, 0($a1)
+	lw $s0, 0($a0) # Addr. of *p
+	lw $s1, 0($a1) # Addr. of *p
 	move $s2, $a2
 	move $t8, $s2 # Copy of *r
 	sw $0, 0($s2) # Make sure that *r is empty
@@ -536,8 +536,7 @@ add_poly:
 		li $v0, 0
 		jr $ra
 	p_empty_addQ:
-		lw $t0, 0($s1)
-		sw $t0, 0($s2)
+		sw $s1, 0($s2)
 		li $v0, 1
 
 		lw $s0, 0($sp)
@@ -547,8 +546,7 @@ add_poly:
 		addi $sp, $sp, 16
 		jr $ra
 	q_empty_addP:
-		lw $t0, 0($s0)
-		sw $t0, 0($s2)
+		sw $s0, 0($s2)
 		li $v0, 1
 		lw $s0, 0($sp)
 		lw $s1, 4($sp)
@@ -561,7 +559,151 @@ add_poly:
 		jr $ra
 mult_poly:
 	# int mult_poly(Polynomial* p, Polynomial* q, Polynomial* r)
+	addi $sp, $sp, -16
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $ra, 12($sp)
+
+	lw $s0, 0($a0)
+	lw $s1, 0($a1)
+	move $s2, $a2
+	move $t8, $s2 # Copy of *r
+	sw $0, 0($s2) # Make sure that *r is empty
+	### PRECONDITIONS ###
+		beqz $s0, err_mult_poly
+		beqz $s1, err_mult_poly
+		beqz $s2, err_mult_poly
+		lw $t0, 0($s0) # Get head for *p
+		lw $t1, 0($s1) # Get head for *q
+		seq $t0, $t0, $0 # *p == 0
+		seq $t1, $t1, $0 # *q == 0
+		and $t0, $t0, $t1 # *p == 0 && *q == 0
+		bgtz $t0, both_empty_mult # if p and q are empty
+		lw $t0, 0($s0) # Get head for *p
+		beqz $t0, p_empty_multQ
+		lw $t0, 0($s1) # Get head for *q
+		beqz $t0, q_empty_multP
+		### END ###
 	
-	jr $ra
-sort_linked_list:
-	# void sort(Polynomial *p)
+	### MAIN BODY ###
+		# 1. Store the multiplications and sum of exp in an array
+		# 2. Combine like terms in the array
+		# 3. Call add_N_terms_to_polynomial function
+		li $t6, 0 # Number of terms to be added
+		move $t3, $s0 # Copy of *p
+		addi $sp, $sp, -8
+		li $t0, 0
+		sw $t0, 0($sp)
+		li $t0, -1
+		sw $t0, 4($sp)
+		loop_mult1:
+			## condition to exit loop 1 ##
+				beqz $t3, end_loop_mult1 # No more iterations for *p
+				## End ##
+				move $t4, $s1 # Copy of *q
+			loop_mult2:
+				## condition to exit loop 2 ##
+					beqz $t4, end_loop_mult2 # No more iterations for *q
+					## End ##
+				addi $sp, $sp, -8
+				# Multiply coeff #
+					lw $t0, 0($t4) # Coeff for q
+					lw $t1, 0($t3) # Coeff for p
+					mult	$t0, $t1			# $t0 * $t1 = Hi and Lo registers
+					mflo	$t2					# copy Lo to $t2
+					sw $t2, 0($sp)
+					# End #
+				# Add exponents #
+					lw $t0, 4($t4) # Exp for q
+					lw $t1, 4($t3) # Exp for p
+					add $t2, $t0, $t1 # Sum of exp
+					sw $t2, 4($sp)
+					# End #
+				
+				lw $t4, 8($t4) # Get the next ptr for q
+				addi $t6, $t6, 1 # Increment the number of terms
+				j loop_mult2
+			end_loop_mult2:
+			lw $t3, 8($t3) # Get the next ptr for p
+			j loop_mult1
+		end_loop_mult1:
+			# TODO: Combine like terms in the array
+			move $t3, $sp # Copy $sp; First set of pairs
+
+			addi $t5, $t6, -1 # Copy $t6 and go Up until the last element (0, -1)
+			loop_mult_comb1:
+				## condition to exit loop 1 ##
+					blez $t5, exit_loop_mult_comb1
+					## End ##
+				addi $t4, $t3, 8 # Get the next set of pairs
+				loop_mult_comb2:
+					## condition to exit loop 2 ##
+						lw $t0, 0($t4)
+						seq $t1, $t0, $0 # pair[0] == 0
+						lw $t0, 4($t4)
+						li $t7, -1
+						seq $t2, $t0, $t7 # pair[1] == -1
+						and $t1, $t1, $t2 # pair[0] == 0 && pair[1] == -1
+						bgtz $t1, exit_loop_mult_comb2
+						## End ##
+					lw $t0, 4($t4) # Exponent for next
+					lw $t1, 4($t3) # Exponent for current
+					beq $t0, $t1, combine_mult # Same exponent; add coefficients
+
+					addi $t4, $t4, 8 # Go to the next pair
+					j loop_mult_comb2
+					combine_mult:
+						# add coefficients
+							lw $t0, 0($t4) # Coeff for next
+							lw $t1, 0($t3) # Coeff for current
+							add $t0, $t0, $t1 # Add
+						# Update current coeff
+							sw $t0, 0($t3)
+						addi $t4, $t4, 8 # Go to the next pair
+						j loop_mult_comb2
+				exit_loop_mult_comb2:
+				addi $t3, $t3, 8 # Go to the next pair
+				addi $t5, $t5, -1 # Decrease the number of iterations
+				j loop_mult_comb1
+			exit_loop_mult_comb1:
+				# TODO
+		### END ###
+	
+		li $v0, 1
+		li $v0, 0
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		jr $ra
+	err_mult_poly:
+	both_empty_mult:		
+		li $v0, 0
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		jr $ra
+	p_empty_multQ:
+		sw $s1, 0($s2)
+		li $v0, 1
+
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		jr $ra
+	q_empty_multP:
+		sw $s0, 0($s2)
+		li $v0, 1
+
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		jr $ra
