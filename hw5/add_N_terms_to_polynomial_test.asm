@@ -20,15 +20,15 @@ main:
     # li $v0, 1
     # syscall
 
-    la $t0, p
-    lw $t0, 0($t0) # Get Head Address
-    lw $t0, 8($t0) # Get Next pointer
-    lw $t0, 8($t0)
-    lw $t0, 8($t0)
+    # la $t0, p
+    # lw $t0, 0($t0) # Get Head Address
+    # lw $t0, 8($t0) # Get Next pointer
+    # lw $t0, 8($t0)
+    # lw $t0, 8($t0)
 
-    lw $a0, 0($t0) # Get coeff
-    li $v0, 1
-    syscall
+    # lw $a0, 0($t0) # Get coeff
+    # li $v0, 1
+    # syscall
 
 
     li $v0, 10

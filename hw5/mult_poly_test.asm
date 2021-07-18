@@ -38,22 +38,22 @@ main:
     # li $v0, 1
     # syscall
 
-    la $t0, r
-    lw $t0, 0($t0) # Get head term
-    lw $t0, 8($t0)
-    lw $t0, 8($t0)
+    # la $t0, r
+    # lw $t0, 0($t0) # Get head term
+    # lw $t0, 8($t0)
+    # lw $t0, 8($t0)
     
-    lw $a0, 0($t0) # Get coeff
-    li $v0, 1
-    syscall
+    # lw $a0, 0($t0) # Get coeff
+    # li $v0, 1
+    # syscall
 
-    li $a0, ' '
-    li $v0, 11
-    syscall
+    # li $a0, ' '
+    # li $v0, 11
+    # syscall
 
-    lw $a0, 4($t0) # Get exp
-    li $v0, 1
-    syscall
+    # lw $a0, 4($t0) # Get exp
+    # li $v0, 1
+    # syscall
 
     li $v0, 10
     syscall
